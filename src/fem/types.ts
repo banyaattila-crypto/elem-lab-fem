@@ -76,6 +76,8 @@ export interface SolutionResult {
   displacements: Map<number, Vec2>;
   /** elem-id → feszültségállapot */
   stresses: Map<number, ElementStress>;
+  /** csomópont-id → reakcióerő [N] (csak rögzített csomópontokon) */
+  reactions: Map<number, Vec2>;
   /** Globális max elmozdulás nagysága [m] */
   maxDisplacement: number;
   /** Globális max Von Mises feszültség [Pa] */

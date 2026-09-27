@@ -16,6 +16,8 @@ export interface RenderOptions {
   showMeshEdges: boolean;
   /** Kiemelendő elem id-ja (vagy null) */
   highlight?: number | null;
+  /** Kiemelendő csomópont id-ja (vagy null) */
+  highlightNode?: number | null;
 }
 
 export const DEFAULT_RENDER_OPTIONS: RenderOptions = {
@@ -137,6 +139,23 @@ export class Renderer {
           ctx.arc(s.sx, s.sy, 3.5, 0, Math.PI * 2);
           ctx.fill();
         }
+      }
+    }
+
+    // Kiválasztott csomópont kiemelése (deformált pozíción)
+    if (opts.highlightNode != null) {
+      const node = mesh.nodes[opts.highlightNode];
+      if (node) {
+        const s = tx(node.x, node.y, node.id);
+        ctx.beginPath();
+        ctx.arc(s.sx, s.sy, 7, 0, Math.PI * 2);
+        ctx.strokeStyle = '#f87171';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath();
+        ctx.arc(s.sx, s.sy, 3.5, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
   }

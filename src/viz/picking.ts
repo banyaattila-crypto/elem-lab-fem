@@ -83,3 +83,25 @@ export function findElementAt(
   }
   return null;
 }
+
+/**
+ * Megkeresi a ponthoz legközelebbi csomópontot, ha az `tolerance` világegység
+ *Sugarú körön belül van. Kattintás-ergonómia: a csomópont elsőbbséget élvez.
+ */
+export function findNodeAt(
+  mesh: Mesh,
+  wx: number,
+  wy: number,
+  tolerance: number,
+): number | null {
+  let best: number | null = null;
+  let bestDist = tolerance;
+  for (const n of mesh.nodes) {
+    const d = Math.hypot(n.x - wx, n.y - wy);
+    if (d <= bestDist) {
+      bestDist = d;
+      best = n.id;
+    }
+  }
+  return best;
+}

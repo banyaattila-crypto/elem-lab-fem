@@ -121,6 +121,13 @@ export const fmt = {
     if (a >= 1e-6) return `${(v * 1e4).toFixed(2)} cm²`;
     return `${(v * 1e6).toFixed(2)} mm²`;
   },
+  n: (v: number): string => {
+    const a = Math.abs(v);
+    if (a < 1e-12) return '0';
+    if (a >= 1e6) return `${(v / 1e6).toFixed(3)} MN`;
+    if (a >= 1e3) return `${(v / 1e3).toFixed(2)} kN`;
+    return `${v.toFixed(1)} N`;
+  },
   num: (v: number, digits = 4): string => {
     if (v === 0) return '0';
     if (Math.abs(v) >= 1e5 || Math.abs(v) < 1e-4) return v.toExponential(3);

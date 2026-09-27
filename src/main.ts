@@ -11,7 +11,9 @@ import { solve } from './fem/solve';
 import { Renderer } from './viz/renderer';
 import { inspectElement } from './ui/mathpanel';
 import { renderInspection } from './ui/mathpanel-view';
-import { findElementAt, screenToWorld } from './viz/picking';
+import { inspectNode } from './ui/nodepanel';
+import { renderNodeInspection } from './ui/nodepanel-view';
+import { findElementAt, findNodeAt, screenToWorld } from './viz/picking';
 import { viridisCss } from './viz/colormap';
 import { ControlsPanel, type ModelOption } from './ui/controls';
 import { lessonFor } from './ui/lessons';
@@ -40,6 +42,7 @@ const state = {
   material: 'steel' as MaterialKey,
   defscale: 500,
   selectedElem: null as number | null,
+  selectedNode: null as number | null,
 };
 
 /** Az utolsó megoldás — kattintáskor újraszámolás nélkül újrarajzolunk */
@@ -70,6 +73,7 @@ app.innerHTML = `
       <section class="lesson-card" id="lesson-card"></section>
       <section class="results" id="results"></section>
       <section class="mathpanel" id="mathpanel"></section>
+      <section class="mathpanel nodepanel" id="nodepanel"></section>
     </main>
   </div>
   <footer>
@@ -87,10 +91,30 @@ canvas.addEventListener('click', (ev) => {
   if (!view || !lastMesh) return;
   const rect = canvas.getBoundingClientRect();
   const world = screenToWorld(ev.clientX - rect.left, ev.clientY - rect.top, view, view.minY);
-  state.selectedElem = findElementAt(lastMesh, world.x, world.y);
+  // Kattintás-ergonómia: csomópont elsőbbség az elemekkel szemben.
+  // Tolerancia = a legkisebb elemméret 30%-a, minimum a háló jellemző méretének töredéke.
+  const tol = estimateTolerance(lastMesh);
+  state.selectedNode = findNodeAt(lastMesh, world.x, world.y, tol);
+  state.selectedElem =
+    state.selectedNode == null ? findElementAt(lastMesh, world.x, world.y) : null;
   updateMathPanel();
+  updateNodePanel();
   redraw();
 });
+
+/** A kattintás toleranciája: jellemző elemméret 35%-a */
+function estimateTolerance(mesh: Mesh): number {
+  if (mesh.elements.length === 0) return 0.05;
+  const e0 = mesh.elements[0]!;
+  const p1 = mesh.nodes[e0.nodes[0]!]!;
+  const p2 = mesh.nodes[e0.nodes[1]!]!;
+  const p3 = mesh.nodes[e0.nodes[2]!]!;
+  const size = Math.max(
+    Math.hypot(p2.x - p1.x, p2.y - p1.y),
+    Math.hypot(p3.x - p2.x, p3.y - p2.y),
+  );
+  return Math.max(size * 0.35, 1e-6);
+}
 
 function redraw(): void {
   if (!lastMesh || !lastSol) return;
@@ -99,6 +123,7 @@ function redraw(): void {
     stressMax: lastSol.maxVonMises || 1,
     showMeshEdges: true,
     highlight: state.selectedElem,
+    highlightNode: state.selectedNode,
   });
 }
 
@@ -154,6 +179,30 @@ window.addEventListener('resize', () => {
   resizeCanvas();
   rebuildAndSolve();
 });
+
+function updateNodePanel(): void {
+  const el = document.querySelector<HTMLDivElement>('#nodepanel')!;
+  const hu = getLang() === 'hu';
+  if (state.selectedNode == null || !lastMesh || !lastSol) {
+    el.innerHTML = '';
+    return;
+  }
+  const insp = inspectNode(lastMesh, lastSol, state.selectedNode);
+  el.innerHTML = `
+    <div class="mp-header">
+      <h2>${hu ? 'Csomópont-vizsgálat' : 'Node inspection'} #${insp.nodeId}</h2>
+      <div class="mp-nav">
+        <button id="np-close" title="${hu ? 'Bezárás' : 'Close'}">✕</button>
+      </div>
+    </div>
+    ${renderNodeInspection(insp, getLang())}
+  `;
+  document.querySelector<HTMLButtonElement>('#np-close')!.addEventListener('click', () => {
+    state.selectedNode = null;
+    updateNodePanel();
+    redraw();
+  });
+}
 
 // ————— Vezérlők —————
 
@@ -216,10 +265,14 @@ function rebuildAndSolve(): void {
   if (state.selectedElem != null && !mesh.elements.some((e) => e.id === state.selectedElem)) {
     state.selectedElem = null;
   }
+  if (state.selectedNode != null && !mesh.nodes.some((n) => n.id === state.selectedNode)) {
+    state.selectedNode = null;
+  }
   redraw();
   updateResults(sol, getLang());
   updateLesson(state.modelId, getLang());
   updateMathPanel();
+  updateNodePanel();
 }
 
 // ————— Eredmény- és leckepanel —————

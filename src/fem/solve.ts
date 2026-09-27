@@ -99,9 +99,25 @@ export function solve(mesh: Mesh, tol = 1e-10): SolutionResult {
     if (vm > maxVonMises) maxVonMises = vm;
   }
 
+  // ————— Reakcióerők a rögzített DOF-okon —————
+  // R = K·u − f (teljes rendszer): a rögzített DOF-ok sorai adják a reakciót.
+  const reactions = new Map<number, Vec2>();
+  for (const dof of fixedDofs) {
+    let r = -f[dof]!; // −f_dof
+    for (let k = K.rowPtr[dof]!; k < K.rowPtr[dof + 1]!; k++) {
+      r += K.values[k]! * uFull[K.colIdx[k]!]!;
+    }
+    const nodeId = Math.floor(dof / 2);
+    const prev = reactions.get(nodeId) ?? { x: 0, y: 0 };
+    if (dof % 2 === 0) prev.x = r;
+    else prev.y = r;
+    reactions.set(nodeId, prev);
+  }
+
   return {
     displacements,
     stresses,
+    reactions,
     maxDisplacement,
     maxVonMises,
     iterations: cg.iterations,

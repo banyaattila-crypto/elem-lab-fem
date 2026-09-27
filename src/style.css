@@ -53,6 +53,44 @@ body {
 @media (max-width: 800px) {
   .layout {
     grid-template-columns: 1fr;
+    padding: 0.75rem;
+    gap: 0.75rem;
+  }
+
+  /* Érintési célok: min. 44px (Apple HIG / Material) */
+  button,
+  .mp-nav button {
+    min-height: 44px;
+    padding: 0.6rem 1rem;
+  }
+
+  .control-group select {
+    min-height: 44px;
+    font-size: 1rem;
+  }
+
+  input[type='range'] {
+    min-height: 32px;
+  }
+
+  .mathpanel {
+    padding: 0.75rem 0.9rem;
+  }
+
+  .mp-header h2 {
+    font-size: 0.95rem;
+  }
+
+  .mp-section .katex-display {
+    font-size: 0.9em;
+  }
+
+  .legend-bar {
+    width: 90px;
+  }
+
+  footer {
+    font-size: 0.7rem;
   }
 }
 
@@ -218,6 +256,10 @@ canvas {
 
 .mathpanel:empty {
   display: none;
+}
+
+.nodepanel:not(:empty) {
+  border-left: 3px solid var(--accent);
 }
 
 .mp-empty {
