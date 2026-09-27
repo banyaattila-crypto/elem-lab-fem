@@ -1,0 +1,28 @@
+{
+  "name": "ElemLab — Végeselem-módszer játszótér",
+  "short_name": "ElemLab",
+  "description": "Interaktív végeselem-módszer játszótér: feszültségmezők, deformációk, oktatási leckék. Minden a böngészőben fut, szerver nélkül.",
+  "lang": "hu",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "meta": "maskable",
+      "src": "/icons/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

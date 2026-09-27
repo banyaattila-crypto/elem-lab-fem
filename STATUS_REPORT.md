@@ -2,7 +2,7 @@
 
 > **Projekt:** Interaktív, oktatási célú végeselem-módszer (FEM) játszótér — web-first PWA
 > **Utolsó frissítés:** 2026-09-26
-> **Státusz:** 🟡 Tervezési fázis — projektváz + specifikációk készülnek
+> **Státusz:** 🟢 MVP-mag működik: szolver + 15/15 validációs teszt + build kész
 
 ---
 
@@ -102,14 +102,14 @@ elemlab/
 
 ### 4.1 Az első verzióba kerül
 
-- [ ] Saját 2D FEM-mag (CST elemek, saját CG-szolver)
-- [ ] 3 kész modell: **konzolgerenda**, **rácsos híd**, **lyukas lemez**
-- [ ] Csúszkák: terhelő erő, anyag (acél / alumínium / fa), hálósűrűség
-- [ ] Von Mises hőtérkép + deformált alak animáció (Canvas 2D)
-- [ ] Lecke-kártyák (2–3 mondat modellenként: „Mit látsz? Miért ott a max feszültség?")
-- [ ] HU/EN nyelvváltás
-- [ ] PWA: telepíthető, offline működő
-- [ ] Analitikus validációs tesztek (Vitest)
+- [x] Saját 2D FEM-mag (CST elemek, saját CG-szolver)
+- [x] 3 kész modell: **konzolgerenda**, **rácsos híd**, **lyukas lemez**
+- [x] Csúszkák: terhelő erő, anyag (acél / alumínium / fa), hálósűrűség
+- [x] Von Mises hőtérkép + deformált alak (Canvas 2D) — animáció később
+- [x] Lecke-kártyák (modellenként 1 magyarázó kártya)
+- [x] HU/EN nyelvváltás
+- [x] PWA: manifest + service worker (build OK; eszközteszt pending)
+- [x] Analitikus validációs tesztek (Vitest) — 15/15 zöld
 
 ### 4.2 Szándékosan későbbre tolva
 
@@ -124,9 +124,9 @@ elemlab/
 
 | Fázis | Tartalom | Becslés | Státusz |
 |---|---|---|---|
-| 0 | Projektváz: Vite + TS + PWA keret | 1 nap | 🟡 folyamatban |
-| 1 | FEM-mag (CST) + validációs tesztek | 1–2 hét | ⚪ nem kezdődött el |
-| 2 | UI, csúszkák, hőtérkép-vizualizáció | 1–2 hét | ⚪ nem kezdődött el |
+| 0 | Projektváz: Vite + TS + PWA keret | 1 nap | 🟢 kész |
+| 1 | FEM-mag (CST) + validációs tesztek | 1–2 hét | 🟢 kész (15/15 teszt, build OK) |
+| 2 | UI, csúszkák, hőtérkép-vizualizáció | 1–2 hét | 🟡 alapok készek, mobil-polish pending |
 | 3 | Leckék, i18n, mobil polish | 1 hét | ⚪ nem kezdődött el |
 | 4 | Deploy (GitHub Pages) + portfólióoldal | 1–2 nap | ⚪ nem kezdődött el |
 
@@ -163,5 +163,9 @@ A teljes, képletekkel ellátott specifikáció: **[docs/fem-spec.md](docs/fem-s
 | 2026-09-26 | Döntések: **web-first PWA**, **Vite + TypeScript**, saját solver, Canvas 2D, Vitest |
 | 2026-09-26 | `elemlab/` mappa létrehozva, **git repo inicializálva** (`main` branch) |
 | 2026-09-26 | `STATUS_REPORT.md` létrehozva (ez a dokumentum) |
+| 2026-09-26 | Projektváz: Vite + TS + PWA fájlok, npm install, typecheck zöld |
+| 2026-09-26 | FEM-mag implementálva: CSR ritka mátrix, Jacobi-előkondicionált CG, CST elem, assembly, DOF-eliminációs peremfeltétel |
+| 2026-09-26 | 3 modell elkészítve (konzolgerenda, rácsos híd, lyukas lemez) + Canvas 2D renderer (viridis) + UI + i18n |
+| 2026-09-26 | **15/15 validációs teszt zöld**; `npm run build` OK (20,75 kB JS, 7,9 kB gzip) |
 | 2026-09-26 | `docs/fem-spec.md` — EEM-mag matematikai specifikáció (LaTeX képletekkel) |
-| 2026-09-26 | `docs/ui-vazlat.html` — interaktív UI-vázlat létrehozva |
+| 2026-09-26 | `docs/ui-vazlat.html` — UI-vázlat (statikus mockup) |

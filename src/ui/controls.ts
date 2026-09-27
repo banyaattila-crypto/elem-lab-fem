@@ -1,0 +1,144 @@
+/**
+ * Vezérlőpanel: modellválasztó, terhelés csúszka, anyagválasztó,
+ * deformáció-nagyítás, nyelvváltó és „Számítás" gomb.
+ */
+
+import { t, type Lang } from './i18n';
+import { MATERIALS } from '../models/meshgen';
+
+export interface ControlsCallbacks {
+  onModelChange: (modelId: string) => void;
+  onParamChange: (param: string, value: number | string) => void;
+  onSolve: () => void;
+  onLangChange: (lang: Lang) => void;
+}
+
+export interface ModelOption {
+  id: string;
+  label: string;
+}
+
+export class ControlsPanel {
+  private root: HTMLElement;
+  private cb: ControlsCallbacks;
+
+  constructor(root: HTMLElement, cb: ControlsCallbacks) {
+    this.root = root;
+    this.cb = cb;
+  }
+
+  render(modelOptions: ModelOption[]): void {
+    this.root.innerHTML = '';
+
+    // 1) Modellválasztó
+    const modelSel = this.select(
+      'model-select',
+      t('model.select'),
+      modelOptions,
+      (v) => this.cb.onModelChange(v),
+    );
+    this.root.appendChild(modelSel);
+
+    // 2) Terhelés csúszka
+    this.root.appendChild(
+      this.slider('load', t('controls.load'), 0, 10000, 100, 1000, (v) =>
+        this.cb.onParamChange('load', v),
+      ),
+    );
+
+    // 3) Hálósűrűség csúszka
+    this.root.appendChild(
+      this.slider('density', t('controls.density'), 1, 5, 1, 3, (v) =>
+        this.cb.onParamChange('density', v),
+      ),
+    );
+
+    // 4) Anyagválasztó
+    const matOptions: ModelOption[] = Object.entries(MATERIALS).map(
+      ([key, m]) => ({ id: key, label: m.name }),
+    );
+    const matSel = this.select(
+      'material-select',
+      t('controls.material'),
+      matOptions,
+      (v) => this.cb.onParamChange('material', v),
+    );
+    this.root.appendChild(matSel);
+
+    // 5) Deformáció-nagyítás
+    this.root.appendChild(
+      this.slider('defscale', t('controls.deformation'), 10, 5000, 10, 500, (v) =>
+        this.cb.onParamChange('defscale', v),
+      ),
+    );
+
+    // 6) Számítás gomb
+    const btn = document.createElement('button');
+    btn.id = 'solve-btn';
+    btn.textContent = t('controls.solve');
+    btn.addEventListener('click', () => this.cb.onSolve());
+    this.root.appendChild(btn);
+
+    // 7) Nyelvváltó
+    const langDiv = document.createElement('div');
+    langDiv.className = 'control-group lang-switch';
+    const huBtn = document.createElement('button');
+    huBtn.textContent = 'HU';
+    huBtn.addEventListener('click', () => this.cb.onLangChange('hu'));
+    const enBtn = document.createElement('button');
+    enBtn.textContent = 'EN';
+    enBtn.addEventListener('click', () => this.cb.onLangChange('en'));
+    langDiv.append(huBtn, enBtn);
+    this.root.appendChild(langDiv);
+  }
+
+  private select(
+    id: string,
+    label: string,
+    options: ModelOption[],
+    onChange: (v: string) => void,
+  ): HTMLDivElement {
+    const div = document.createElement('div');
+    div.className = 'control-group';
+    const lab = document.createElement('label');
+    lab.htmlFor = id;
+    lab.textContent = label;
+    const sel = document.createElement('select');
+    sel.id = id;
+    for (const opt of options) {
+      const o = document.createElement('option');
+      o.value = opt.id;
+      o.textContent = opt.label;
+      sel.appendChild(o);
+    }
+    sel.addEventListener('change', () => onChange(sel.value));
+    div.append(lab, sel);
+    return div;
+  }
+
+  private slider(
+    id: string,
+    label: string,
+    min: number,
+    max: number,
+    step: number,
+    value: number,
+    onInput: (v: number) => void,
+  ): HTMLDivElement {
+    const div = document.createElement('div');
+    div.className = 'control-group';
+    const lab = document.createElement('label');
+    lab.htmlFor = id;
+    lab.textContent = label;
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.id = id;
+    input.min = String(min);
+    input.max = String(max);
+    input.step = String(step);
+    input.value = String(value);
+    input.addEventListener('input', () => onInput(Number(input.value)));
+    div.append(lab, input);
+    return div;
+  }
+}
