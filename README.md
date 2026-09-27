@@ -10,7 +10,7 @@ Az ElemLab oktatási célú 2D végeselemes szimulátor: kész modelleket variá
 csúszkákkal (terhelés, terhelés-típus, anyag, hálósűrűség), és valós időben látod
 a feszültségmezőt színes hőtérképen, deformált geometriával. A teljes számítási
 motor TypeScriptben, közvetlenül a böngészőben fut — nincs háttérszerver.
-A láblécben mindig látod, melyik verziót és buildet nézed (`v0.5.0 · build …`).
+A láblécben mindig látod, melyik verziót és buildet nézed (`v0.7.0 · build …`).
 
 ## Funkciók
 
@@ -19,7 +19,8 @@ A láblécben mindig látod, melyik verziót és buildet nézed (`v0.5.0 · buil
 - 📐 **CST elem** (konstans feszültségű háromszög) és **T6 kvadratikus elem**
   (izoparaméteres, 3 pontos Gauss-kvadratúrával)
 - 🏗️ **7 kész modell** — gerendák, keret, tartó, rácsos híd, lemez (lásd lent)
-- 🎨 **Viridis hőtérkép** (színvakság-barát) + deformált alak — Canvas 2D **és**
+- 🎨 **Egyárnyalatú kék hőtérkép** (Oklab-interpoláció, monoton világosság,
+  színvakság-barát) + deformált alak — Canvas 2D **és**
   WebGL (Three.js, csúcs-színes folytonos mező, forgatás/zoom/pan)
 - 📏 **Rajz-annotációk**: méretvonalak (hossz, magasság, lyuk-Ø),
   **támasz-szimbólumok** (befogás / csukló / görgő), **terhelés-nyilak**
@@ -31,8 +32,9 @@ A láblécben mindig látod, melyik verziót és buildet nézed (`v0.5.0 · buil
   értékeket (gerenda-modelleknél)
 - 🖱️ **Zoom/pan** a 2D nézetben (görgő = zoom az egér körül, húzás = mozgatás,
   dupla kattintás = visszaállítás)
-- 🧮 **Valós idejű elem- és csomópontvizsgálat**: kattintásra teljes CST-levezetés
+- 🧮 **Valós idejű elem- és csomópontvizsgálat**: kattintásra teljes levezetés
   KaTeX-képletekkel, élő számokkal — geometria, D, B, kₑ, uₑ, ε, σ, Von Mises
+  (CST módban; T6-ban a sarok-csúcsok adataival dolgozik — lásd a Korlátok részt)
 - 📚 **Lecke-kártyák** — modellenként magyarázat, mit és miért látsz
 - 🌐 **Magyar / angol** nyelv
 - 📱 **PWA** — telepíthető, offline működő
@@ -54,7 +56,7 @@ A láblécben mindig látod, melyik verziót és buildet nézed (`v0.5.0 · buil
 ```bash
 npm install
 npm run dev        # fejlesztői szerver
-npm test           # 51 validációs teszt
+npm test           # 62 validációs teszt
 npm run typecheck  # TypeScript ellenőrzés
 npm run build      # produkciós build + service worker
 ```
@@ -74,7 +76,7 @@ Röviden:
 
 ## Validáció
 
-A szolvert ismert analitikus megoldásokkal ellenőrizzük (Vitest, **51 teszt**):
+A szolvert ismert analitikus megoldásokkal ellenőrizzük (Vitest, **62 teszt**):
 
 | Teszt | Referencia | Ellenőrzés |
 |---|---|---|
@@ -93,13 +95,26 @@ A szolvert ismert analitikus megoldásokkal ellenőrizzük (Vitest, **51 teszt**
 ```
 src/
 ├── fem/        # számító mag: típusok, CSR+CG, CST + T6 elem, assembly, solve
-├── models/     # hálógenerátorok + 8 modell (gerendák, keret, tartó, lemezek)
-├── viz/        # renderer, viridis, picking, annotációk, M/V diagramok
+├── models/     # hálógenerátorok + 7 modell (gerendák, keret, tartó, híd, lemez)
+├── viz/        # renderer, színtérkép (colormap.ts), picking, annotációk, M/V diagramok
 ├── ui/         # vezérlőpanel, MathPanel/NodePanel, leckék, i18n
 └── locales/    # hu.json, en.json
-tests/          # validációs és egységtesztek (52)
+tests/          # validációs és egységtesztek (62)
 docs/           # matematikai specifikáció + UI vázlat
 ```
+
+## Korlátok
+
+Őszintén, hogy mi nincs kész — ezek a dokumentum előnye a marketing-(copy)-hoz képest:
+
+| Korlát | Részletek |
+|---|---|
+| **A lyukas lemez Kt-je nem konvergál 3-hoz** | a mért $K_t$ a hálósűrűséggel **nő** (4,1 → 5,0). A konform rácsos háló önmagában nem elég; határkövető (Delaunay / advancing front) generátor kell |
+| **A T6 feszültsége Gauss-átlag** | az elemvizsgálatban a 3 Gauss-pont súlyozott átlaga látható, nem külön pontonkénti érték — a hőtérkép elemenként egy értéket kér. A $\mathbf{B}$ sem állandó a kvadratikus elemen, ezért $\mathbf{\overline{B}}$ súlyozott átlag, amellyel $\boldsymbol{\varepsilon}=\mathbf{\overline{B}}\mathbf{u}_e$ pontosan teljesül |
+| **Nincs 1D rúdelem** | minden modell 2D háromszögháló; a rácsos híd is CST-háló, nem rúdélemes |
+| **Az elosztott terhelés csak vízszintes, $y$ irányú** | a szakasz teljes ereje ($q \cdot L$) konzisztensen megoszlik a rá eső csomópontok között; a valódi feszültségmező helyett az eredőerőt tartja meg |
+| **A T6 koncentrációja** | a Kt-problémát a T6 nem oldja meg, a hálósűrűséget igen |
+| **Nincs fiók, felhő-mentés, megosztás** | a PWA offline működik, de nincs perzisztencia |
 
 ## Technológia
 
@@ -108,10 +123,10 @@ KaTeX · Vitest · vite-plugin-pwa
 
 ## Állapot és tervek
 
-🟢 **v0.5.0 élő**: 8 modell, annotációk, M/V diagramok, elosztott terhelés,
-T6 + WebGL, MathPanel/NodePanel — 52/52 teszt, Vercel deploy.
-Tervek: határkövető háló a pontos Kt-hoz, rúd-elemek vegyes modellekhez,
-saját geometriaszerkesztő.
+🟢 **v0.7.0 élő**: 7 modell, annotációk + reakció-feliratok, M/V panel kurzorral,
+elosztott terhelés, T6 + WebGL 3D nézet, MathPanel/NodePanel — 62/62 teszt, Vercel deploy.
+Tervek: határkövető háló a pontos Kt-hoz (a Kt jelenleg 4,1 → 5,0 a sűrűséggel),
+1D rúdelem vegyes modellekhez, saját geometriaszerkesztő, portfólióoldal.
 
 ⚠️ *Oktatási célú bemutató — mérnöki döntésre nem használható!*
 

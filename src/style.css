@@ -453,6 +453,39 @@ canvas {
   font-size: 0.85rem;
 }
 
+/* Elemtípus-címke a MathPanel fejlécében */
+.mp-tag {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  vertical-align: 0.15em;
+  padding: 0.05rem 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  color: var(--text-dim);
+}
+
+/* Gauss-pont táblázat (T6 elemvizsgálat) */
+.mp-table {
+  border-collapse: collapse;
+  margin: 0.4rem 0 0.2rem;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.mp-table th,
+.mp-table td {
+  border: 1px solid var(--border);
+  padding: 0.15rem 0.5rem;
+  text-align: right;
+}
+
+.mp-table th {
+  font-weight: 600;
+  color: var(--text-dim);
+  text-align: center;
+}
+
 .mp-section .katex-display {
   margin: 0.35rem 0;
   overflow-x: auto;

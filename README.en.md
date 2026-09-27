@@ -8,13 +8,13 @@
 
 🌐 **Live demo:** [elem-lab-fem.vercel.app](https://elem-lab-fem.vercel.app)
 
-ElemLab is an educational 2D finite element simulator: pick one of **8 models**
-(beams, portal frame, corbel bracket, truss bridge, plates), tweak the controls —
+ElemLab is an educational 2D finite element simulator: pick one of **7 models**
+(beams, portal frame, corbel bracket, truss bridge, plate), tweak the controls —
 load, load type (point ⇄ distributed), material, mesh density — and watch the
 Von Mises stress heatmap and deformed shape update in real time. The entire
 solver is written in TypeScript and runs **client-side**: no backend, no uploads.
 The footer always shows which version and build you are looking at
-(`v0.5.0 · build …`).
+(`v0.7.0 · build …`).
 
 ## Highlights
 
@@ -27,7 +27,8 @@ The footer always shows which version and build you are looking at
   step by step — nodal coordinates, areal coordinates *b/c*, area, **D**, **B**, the
   6×6 element stiffness matrix **kₑ = tA·BᵀDB**, displacements, strain ε = B·u,
   stress σ = D·ε and Von Mises — typeset with KaTeX, using the *actual* numbers from
-  the running simulation
+  the running simulation. (CST mode; in T6 mode it evaluates the corner triangle —
+  see *Known limitations*)
 - 📍 **Node inspection**: click any **node** to see its displacement, applied load and
   the reaction force at supports
 - 📏 **Drawing annotations**: dimension lines (length, height, hole Ø),
@@ -41,16 +42,18 @@ The footer always shows which version and build you are looking at
   double-click = reset), plus a WebGL (Three.js) 3D view with orbit controls
 - 🏗️ **Seven models**: cantilever, simply supported beam, fixed–fixed beam,
   portal frame, corbel bracket, Warren truss bridge, plate with a hole
-- 🎨 Colorblind-friendly **viridis** heatmap + deformed shape (Canvas 2D + WebGL)
+- 🎨 Colorblind-friendly **single-hue blue** heatmap (Oklab interpolation, monotone
+  lightness) + deformed shape (Canvas 2D + WebGL)
 - 📚 **Lesson cards** per model · 🌐 Hungarian / English · 📱 installable **PWA**
-- ✅ **51/51 validation tests** against analytic solutions (Vitest)
+- 📊 **Reaction values** next to the support symbols (R = … kN/N)
+- ✅ **62/62 validation tests** against analytic solutions (Vitest)
 
 ## Quick start
 
 ```bash
 npm install
 npm run dev        # dev server
-npm test           # 51 validation tests
+npm test           # 62 validation tests
 npm run typecheck  # TypeScript checks
 npm run build      # production build + service worker
 ```
@@ -75,10 +78,23 @@ The solver is checked against closed-form results:
 
 Full derivation (in Hungarian, with formulas): **[docs/fem-spec.md](docs/fem-spec.md)**
 
-- Element stiffness: kₑ = t·A·Bᵀ·D·B (plane stress)
+- Element stiffness: kₑ = t·A·Bᵀ·D·B (CST, plane stress); kₑ = t·Σ w·detJ·Bᵀ·D·B (T6)
 - Global system K·u = f solved by DOF elimination + preconditioned Conjugate Gradient
 - Reactions: R = K·u − f evaluated on restrained DOFs
 - Distributed loads: segment force q·L shared consistently over the nodes it covers
+
+## Known limitations
+
+Honest list of what is **not** finished:
+
+| Limitation | Details |
+|---|---|
+| **The plate-with-hole Kt does not converge to 3** | the measured $K_t$ *grows* with mesh density (4.1 → 5.0). A structured grid alone is not enough — a boundary-fitted (Delaunay / advancing front) generator is required |
+| **T6 stress is a Gauss-point average** | the element inspection shows the weighted average of the 3 Gauss points, not a value per point — the heatmap needs one value per element. B is not constant on a quadratic element either, so $\mathbf{\overline{B}}$ is a weighted average for which $\boldsymbol{\varepsilon}=\mathbf{\overline{B}}\mathbf{u}_e$ holds exactly |
+| **No 1D bar element** | every model is a 2D triangle mesh; the truss bridge is a CST mesh, not a bar-element assembly |
+| **Distributed loads are horizontal, y-direction only** | the segment force q·L is shared consistently over the nodes it covers; it preserves the resultant, not the true stress field |
+| **T6 does not fix the stress concentration** | it does not solve the Kt problem, it does reduce the required mesh density |
+| **No accounts, cloud save or sharing** | the PWA works offline but persists nothing |
 
 ## Tech
 
@@ -87,10 +103,11 @@ KaTeX · Vitest · vite-plugin-pwa
 
 ## Status & roadmap
 
-🟢 **v0.5.0 live**: 8 models, annotations, M/V diagrams, distributed loads,
-T6 + WebGL, MathPanel/NodePanel — 52/52 tests, deployed on Vercel.
-Next: boundary-fitted mesh for an accurate Kt ≈ 3, truss/bar elements for
-mixed models, geometry editor.
+🟢 **v0.7.0 live**: 7 models, annotations + reaction values, M/V panel with cursor
+readout, distributed loads, T6 + WebGL 3D view, MathPanel/NodePanel — 62/62 tests,
+deployed on Vercel.
+Next: boundary-fitted mesh for an accurate Kt ≈ 3 (currently 4.1 → 5.0 with
+density), 1D bar elements for mixed models, geometry editor, portfolio page.
 
 ⚠️ *Educational demo — not for engineering decision-making!*
 

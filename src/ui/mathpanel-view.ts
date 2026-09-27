@@ -2,6 +2,10 @@
  * MathPanel — nézet: lépésről lépésre levezetés KaTeX-sel.
  * Minden képlet az adott elem VALÓDI számaival jelenik meg.
  * (String-konkatenáció a beágyazott template-hibák elkerülésére.)
+ *
+ * Az elemtípustól (CST / T6) függően ugyanaz a 8 szekció jelenik meg, de a
+ * T6-nál a kvadratikus elemre jellemző képletekkel: természetes koordináták,
+ * Gauss-pontok, súlyozott B-átlag és 12×12 merevség.
  */
 
 import katex from 'katex';
@@ -48,9 +52,7 @@ export function renderInspection(
   lang: 'hu' | 'en',
 ): string {
   const hu = lang === 'hu';
-  const p1 = insp.coords[0]!;
-  const p2 = insp.coords[1]!;
-  const p3 = insp.coords[2]!;
+  const t6 = insp.elementType === 'T6';
   const b1 = insp.b[0]!;
   const c1 = insp.b[1]!;
   const b2 = insp.b[2]!;
@@ -66,12 +68,29 @@ export function renderInspection(
   const u = insp.uElem;
   const t = insp.thickness;
   const nu = insp.material.nu;
+  const isT6Mesh = t6;
+
+  /** (a, b) → helyi vagy angol szöveg */
+  const L = (h: string, e: string): string => (hu ? h : e);
 
   // ————— 1. Geometria —————
   const coordsTex = disp(
-    '\\begin{aligned}(x_1,y_1)&=(' + fmt.num(p1.x) + ',\\;' + fmt.num(p1.y) + ')\\,\\text{m}\\\\' +
-      '(x_2,y_2)&=(' + fmt.num(p2.x) + ',\\;' + fmt.num(p2.y) + ')\\,\\text{m}\\\\' +
-      '(x_3,y_3)&=(' + fmt.num(p3.x) + ',\\;' + fmt.num(p3.y) + ')\\,\\text{m}\\end{aligned}',
+    '\\begin{aligned}' +
+      insp.coords
+        .map(
+          (p, i) =>
+            '(x_{' +
+            (i + 1) +
+            '},y_{' +
+            (i + 1) +
+            '})&=(' +
+            fmt.num(p.x) +
+            ',\\;' +
+            fmt.num(p.y) +
+            ')\\,\\text{m}',
+        )
+        .join('\\\\') +
+      '\\end{aligned}',
   );
   const bcTex = disp(
     '\\begin{aligned}b_1&=' + fmt.num(b1) + ',&c_1&=' + fmt.num(c1) + '\\\\' +
@@ -83,81 +102,203 @@ export function renderInspection(
       fmt.num(b1) + ')\\cdot(' + fmt.num(c2) + ')-(' + fmt.num(b2) + ')\\cdot(' + fmt.num(c1) +
       ')\\right]=\\mathbf{' + fmt.area(insp.area) + '}',
   );
+
+  // T6: természetes koordináták + a Gauss-pontok determinánsai
+  const naturalTex = insp.natural
+    ? disp(
+        '\\begin{array}{c|ccc}i&L_1&L_2&L_3\\\\\\hline' +
+          insp.natural
+            .map(
+              (q, i) =>
+                (i + 1) +
+                '&' +
+                fmt.num(q.l1, 2) +
+                '&' +
+                fmt.num(q.l2, 2) +
+                '&' +
+                fmt.num(q.l3, 2),
+            )
+            .join('\\\\') +
+          '\\end{array}',
+      )
+    : '';
+  const gaussTable = insp.gauss
+    ? '<table class="mp-table"><thead><tr><th>' +
+      L('Gauss-pont', 'Gauss point') +
+      '</th><th>(L₁, L₂)</th><th>w</th><th>det J</th></tr></thead><tbody>' +
+      insp.gauss
+        .map(
+          (g, i) =>
+            '<tr><td>' +
+            (i + 1) +
+            '</td><td>(' +
+            fmt.num(g.l1, 2) +
+            ', ' +
+            fmt.num(g.l2, 2) +
+            ')</td><td>' +
+            fmt.num(g.w, 3) +
+            '</td><td>' +
+            fmt.num(g.detJ, 6) +
+            '</td></tr>',
+        )
+        .join('') +
+      '</tbody></table>'
+    : '';
+
   const geom = section(
     '📐',
-    hu ? '1. Geometria — csúszóint-koordináták' : '1. Geometry — areal coordinates',
-    '<p>' + (hu ? 'A három csomópont koordinátái (világrendszer):' : 'The three node coordinates (world system):') + '</p>' +
+    isT6Mesh
+      ? L('1. Geometria — 6 csúcs és természetes koordináták', '1. Geometry — 6 nodes and natural coordinates')
+      : L('1. Geometria — csúszóint-koordináták', '1. Geometry — areal coordinates'),
+    '<p>' +
+      (isT6Mesh
+        ? L(
+            'A hat csúcs koordinátái (világrendszer) — 3 sarok + 3 élközépcsúcs:',
+            'The six node coordinates (world system) — 3 corners + 3 edge mid-nodes:',
+          )
+        : L('A három csomópont koordinátái (világrendszer):', 'The three node coordinates (world system):')) +
+      '</p>' +
       coordsTex +
-      '<p>' + (hu ? 'Csúszóint-koordináták és a terület:' : 'Areal coordinates and the area:') + '</p>' +
-      bcTex + areaTex,
+      (isT6Mesh
+        ? '<p>' +
+          L(
+            'A természetes (területi) koordináták, amelyeken az alakfüggvények definiáltak (L₁+L₂+L₃=1):',
+            'Natural (areal) coordinates, on which the shape functions are defined (L₁+L₂+L₃=1):',
+          ) +
+          '</p>' +
+          naturalTex +
+          '<p>' +
+          L(
+            'A sarok-háromszög csúszóint-koordinátái (geometriai referencia):',
+            'Areal coordinates of the corner triangle (geometric reference):',
+          ) +
+          '</p>' +
+          bcTex +
+          areaTex +
+          '<p>' +
+          L(
+            'A 3 pontos Gauss-kvadratúra: az élek középpontjaiban. A B mátrix lineáris L-ben, így BᵀDB kvadratikus — ez a szabály egzakt.',
+            '3-point Gauss quadrature: at the edge midpoints. B is linear in L, so BᵀDB is quadratic — this rule is exact.',
+          ) +
+          '</p>' +
+          gaussTable
+        : '<p>' +
+          L('Csúszóint-koordináták és a terület:', 'Areal coordinates and the area:') +
+          '</p>' +
+          bcTex +
+          areaTex),
   );
 
   // ————— 2. Anyag + D mátrix —————
-  const k = insp.material.E / (1 - nu * nu);
+  const kMat = insp.material.E / (1 - nu * nu);
   const dNum = [
-    [k, k * nu, 0],
-    [k * nu, k, 0],
-    [0, 0, (k * (1 - nu)) / 2],
+    [kMat, kMat * nu, 0],
+    [kMat * nu, kMat, 0],
+    [0, 0, (kMat * (1 - nu)) / 2],
   ];
   const dTex = disp(
-    '\\mathbf{D}=\\frac{E}{1-\\nu^2}\\begin{bmatrix}1&\\nu&0\\\\\\nu&1&0\\\\0&0&\\tfrac{1-\\nu}{2}\\end{bmatrix}=' +
+    '\\mathbf{D}=\\frac{E}{1-\\nu^2}\\begin{bmatrix}1&\\nu&0\\\\\nu&1&0\\\\0&0&\\tfrac{1-\\nu}{2}\\end{bmatrix}=' +
       texMatrix(dNum, 3),
   );
   const mat = section(
     '🧪',
-    (hu ? '2. Anyag: ' : '2. Material: ') + insp.material.name,
+    L('2. Anyag: ', '2. Material: ') + insp.material.name,
     '<p>E = ' + fmt.pa(insp.material.E) + ', ν = ' + nu + ', t = ' + fmt.m(t) +
-      (hu ? ' — síkfeszültség-állapot.' : ' — plane stress.') + '</p>' +
+      L(' — síkfeszültség-állapot.', ' — plane stress.') + '</p>' +
       dTex +
-      '<p class="mp-dim">' + (hu ? 'Összefüggés: σ = D·ε' : 'Relation: σ = D·ε') + '</p>',
+      '<p class="mp-dim">' + L('Összefüggés: σ = D·ε', 'Relation: σ = D·ε') + '</p>',
   );
 
   // ————— 3. B mátrix —————
-  const b2a = insp.B.map((row) => row.map((v) => v * 2 * insp.area));
-  const bDefTex = disp(
-    '\\mathbf{B}=\\frac{1}{2A}\\begin{bmatrix}' +
-      fmt.num(b1, 3) + '&0&' + fmt.num(b2, 3) + '&0&' + fmt.num(b3, 3) + '&0\\\\' +
-      '0&' + fmt.num(c1, 3) + '&0&' + fmt.num(c2, 3) + '&0&' + fmt.num(c3, 3) + '\\\\' +
-      fmt.num(c1, 3) + '&' + fmt.num(b1, 3) + '&' + fmt.num(c2, 3) + '&' + fmt.num(b2, 3) + '&' + fmt.num(c3, 3) + '&' + fmt.num(b3, 3) +
-      '\\end{bmatrix}=' + texMatrix(insp.B, 2),
-  );
-  const bCheckTex = disp('2A\\,\\mathbf{B}=' + texMatrix(b2a, 2));
-  const bmat = section(
-    '🧮',
-    hu ? '3. B mátrix — alakváltozás-elmozdulás' : '3. B matrix — strain-displacement',
-    bDefTex +
-      '<p class="mp-dim">' + (hu ? 'Ellenőrzés — a 2A·B szorzat:' : 'Check — the product 2A·B:') + '</p>' +
-      bCheckTex,
-  );
+  const bmat = isT6Mesh
+    ? section(
+        '🧮',
+        L('3. B mátrix — Gauss-átlag (3×12)', '3. B matrix — Gauss average (3×12)'),
+        disp(
+          '\\overline{\\mathbf{B}}=\\frac{\\sum_g w_g\\,\\det\\mathbf{J}_g\\,\\mathbf{B}_g}{\\sum_g w_g\\,\\det\\mathbf{J}_g}=[\\ldots]',
+        ) +
+          texMatrix(insp.B, 2) +
+          '<p class="mp-dim">' +
+          L(
+            'A kvadratikus elemen a B nem állandó — minden Gauss-pontban más. A fenti súlyozott átlag az, amellyel az ε = B·uₑ azonosság pontosan teljesül (az alakváltozás lineáris uₑ-ben).',
+            'On the quadratic element B is not constant — it differs at every Gauss point. The weighted average shown is the one for which ε = B·uₑ holds exactly (strain is linear in uₑ).',
+          ) +
+          '</p>',
+      )
+    : (() => {
+        const b2a = insp.B.map((row) => row.map((v) => v * 2 * insp.area));
+        const bDefTex = disp(
+          '\\mathbf{B}=\\frac{1}{2A}\\begin{bmatrix}' +
+            fmt.num(b1, 3) + '&0&' + fmt.num(b2, 3) + '&0&' + fmt.num(b3, 3) + '&0\\\\' +
+            '0&' + fmt.num(c1, 3) + '&0&' + fmt.num(c2, 3) + '&0&' + fmt.num(c3, 3) + '\\\\' +
+            fmt.num(c1, 3) + '&' + fmt.num(b1, 3) + '&' + fmt.num(c2, 3) + '&' + fmt.num(b2, 3) +
+            '&' + fmt.num(c3, 3) + '&' + fmt.num(b3, 3) +
+            '\\end{bmatrix}=' + texMatrix(insp.B, 2),
+        );
+        const bCheckTex = disp('2A\\,\\mathbf{B}=' + texMatrix(b2a, 2));
+        return section(
+          '🧮',
+          L('3. B mátrix — alakváltozás-elmozdulás', '3. B matrix — strain-displacement'),
+          bDefTex +
+            '<p class="mp-dim">' +
+            L('Ellenőrzés — a 2A·B szorzat:', 'Check — the product 2A·B:') +
+            '</p>' +
+            bCheckTex,
+        );
+      })();
 
   // ————— 4. Elemi merevség —————
   const keNorm = insp.ke.map((row) => row.map((v) => v / (t * insp.area)));
-  const keDefTex = disp(
-    '\\mathbf{k}_e=t\\,A\\,\\mathbf{B}^{\\top}\\mathbf{D}\\,\\mathbf{B}=(' +
-      fmt.num(t, 3) + '\\,\\text{m})\\cdot(' + fmt.area(insp.area) + ')\\cdot[\\ldots]',
-  );
   const keValTex = disp('\\mathbf{k}_e/(tA)=' + texMatrix(keNorm, 3));
-  const keSec = section(
-    '⚙️',
-    hu ? '4. Elemi merevségi mátrix (6×6)' : '4. Element stiffness matrix (6×6)',
-    keDefTex + keValTex +
-      '<p class="mp-dim">' +
-      (hu
-        ? 'Szimmetrikus, pozitív szemidefinit — merevtest-mozgásra nulla.'
-        : 'Symmetric, positive semi-definite — zero for rigid-body modes.') +
-      '</p>',
-  );
+  const keSec = isT6Mesh
+    ? section(
+        '⚙️',
+        L('4. Elemi merevségi mátrix (12×12)', '4. Element stiffness matrix (12×12)'),
+        disp(
+          '\\mathbf{k}_e=t\\sum_{g=1}^{3} w_g\\,\\det\\mathbf{J}_g\\;\\mathbf{B}_g^{\\top}\\mathbf{D}\\,\\mathbf{B}_g=(' +
+            fmt.num(t, 3) +
+            '\\,\\text{m})\\cdot\\sum_{g=1}^{3}[\\ldots]',
+        ) +
+          keValTex +
+          '<p class="mp-dim">' +
+          L(
+            'Szimmetrikus, pozitív szemidefinit — a 6 merevtest-mozgásra nulla. A mátrix vízszintesen görgethető.',
+            'Symmetric, positive semi-definite — zero for the 6 rigid-body modes. Scroll horizontally.',
+          ) +
+          '</p>',
+      )
+    : section(
+        '⚙️',
+        L('4. Elemi merevségi mátrix (6×6)', '4. Element stiffness matrix (6×6)'),
+        disp(
+          '\\mathbf{k}_e=t\\,A\\,\\mathbf{B}^{\\top}\\mathbf{D}\\,\\mathbf{B}=(' +
+            fmt.num(t, 3) +
+            '\\,\\text{m})\\cdot(' +
+            fmt.area(insp.area) +
+            ')\\cdot[\\ldots]',
+        ) +
+          keValTex +
+          '<p class="mp-dim">' +
+          L(
+            'Szimmetrikus, pozitív szemidefinit — merevtest-mozgásra nulla.',
+            'Symmetric, positive semi-definite — zero for rigid-body modes.',
+          ) +
+          '</p>',
+      );
 
   // ————— 5. Elmozdulások —————
   const uTex = disp('\\mathbf{u}_e=' + texMatrix([u], 6) + '\\;\\text{m}');
-  const disp5 = section(
+  const dispSec = section(
     '↔️',
-    hu ? '5. Csomóponti elmozdulások' : '5. Nodal displacements',
+    isT6Mesh
+      ? L('5. Csomóponti elmozdulások (6 csúcs)', '5. Nodal displacements (6 nodes)')
+      : L('5. Csomóponti elmozdulások', '5. Nodal displacements'),
     uTex +
       '<p class="mp-dim">' +
-      (hu
-        ? 'A K·u = f rendszerből — DOF-elimináció + Conjugate Gradient.'
-        : 'From K·u = f — DOF elimination + Conjugate Gradient.') +
+      L(
+        'A K·u = f rendszerből — DOF-elimináció + Conjugate Gradient.',
+        'From K·u = f — DOF elimination + Conjugate Gradient.',
+      ) +
       '</p>',
   );
 
@@ -166,15 +307,23 @@ export function renderInspection(
     '\\boldsymbol{\\varepsilon}=\\mathbf{B}\\,\\mathbf{u}_e=' +
       texMatrix([[e1], [e2], [e3]], 6) + '\\;\\text{[–]}',
   );
-  const eps6 = section(
+  const epsSec = section(
     '📏',
-    hu ? '6. Alakváltozás: ε = B·uₑ' : '6. Strain: ε = B·uₑ',
+    L('6. Alakváltozás: ε = B·uₑ', '6. Strain: ε = B·uₑ'),
     epsTex +
       '<ul class="mp-list">' +
       '<li>εₓ = <strong>' + fmt.num(e1, 6) + '</strong></li>' +
       '<li>ε_y = <strong>' + fmt.num(e2, 6) + '</strong></li>' +
       '<li>γₓᵧ = <strong>' + fmt.num(e3, 6) + '</strong></li>' +
-      '</ul>',
+      '</ul>' +
+      (isT6Mesh
+        ? '<p class="mp-dim">' +
+          L(
+            'Gauss-pontok súlyozott átlaga — az elemen belül az alakváltozás lineárisan változik.',
+            'Weighted average of the Gauss points — strain varies linearly inside the element.',
+          ) +
+          '</p>'
+        : ''),
   );
 
   // ————— 7. Feszültség —————
@@ -182,15 +331,23 @@ export function renderInspection(
     '\\boldsymbol{\\sigma}=\\mathbf{D}\\,\\boldsymbol{\\varepsilon}=' +
       texMatrix([[sx], [sy], [tx]], 3) + '\\;\\text{Pa}',
   );
-  const sig7 = section(
+  const sigSec = section(
     '💥',
-    hu ? '7. Feszültség: σ = D·ε' : '7. Stress: σ = D·ε',
+    L('7. Feszültség: σ = D·ε', '7. Stress: σ = D·ε'),
     sigTex +
       '<ul class="mp-list">' +
       '<li>σₓ = <strong>' + fmt.pa(sx) + '</strong></li>' +
       '<li>σ_y = <strong>' + fmt.pa(sy) + '</strong></li>' +
       '<li>τₓᵧ = <strong>' + fmt.pa(tx) + '</strong></li>' +
-      '</ul>',
+      '</ul>' +
+      (isT6Mesh
+        ? '<p class="mp-dim">' +
+          L(
+            'Gauss-pontok súlyozott átlaga — a hőtérkép elemenként egy értéket kér.',
+            'Weighted average of the Gauss points — the heatmap needs one value per element.',
+          ) +
+          '</p>'
+        : ''),
   );
 
   // ————— 8. Von Mises —————
@@ -199,18 +356,16 @@ export function renderInspection(
       '=\\sqrt{(' + fmt.num(sx, 3) + ')^2+(' + fmt.num(sy, 3) + ')^2-(' + fmt.num(sx, 3) + ')(' + fmt.num(sy, 3) + ')+3(' + fmt.num(tx, 3) + ')^2}' +
       '=\\mathbf{' + fmt.pa(insp.vonMises) + '}',
   );
-  const vm8 = section(
+  const vmSec = section(
     '🎯',
-    hu ? '8. Von Mises összehasonlító feszültség' : '8. Von Mises equivalent stress',
+    L('8. Von Mises összehasonlító feszültség', '8. Von Mises equivalent stress'),
     vmTex +
       '<p class="mp-dim">' +
-      (hu
-        ? 'Ez az érték színezi az elemet a hőtérképen.'
-        : 'This value colors the element in the heatmap.') +
+      L('Ez az érték színezi az elemet a hőtérképen.', 'This value colors the element in the heatmap.') +
       '</p>',
   );
 
-  return geom + mat + bmat + keSec + disp5 + eps6 + sig7 + vm8;
+  return geom + mat + bmat + keSec + dispSec + epsSec + sigSec + vmSec;
 }
 
 /** Kis segéd az inline képletekhez (későbbi bővítéshez) */

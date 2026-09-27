@@ -4,7 +4,7 @@
  */
 
 import type { Mesh, SolutionResult } from '../fem/types';
-import { viridis } from './colormap';
+import { stressCss } from './colormap';
 import type { ViewTransform } from './picking';
 import {
   computeDimensionLines,
@@ -164,7 +164,7 @@ export class Renderer {
       ctx.lineTo(s2.sx, s2.sy);
       ctx.lineTo(s3.sx, s3.sy);
       ctx.closePath();
-      ctx.fillStyle = viridisCss(t);
+      ctx.fillStyle = stressCss(t);
       ctx.fill();
 
       if (opts.showMeshEdges) {
@@ -253,7 +253,7 @@ export class Renderer {
 
   /**
    * Színskála-jelmagyarázat a vászonra rajzolva (Canvas 2D nézet):
-   * Viridis sáv + 0/max Von Mises érték + deformáció-méretarány.
+   * Egyárnyalatú kék sáv + 0/max Von Mises érték + deformáció-méretarány.
    */
   private drawLegend(ctx: CanvasRenderingContext2D, stressMax: number, defscale: number): void {
     const { width, height } = this.canvas;
@@ -272,7 +272,7 @@ export class Renderer {
     // színskála (sűrű csíkozás = folytonos hatás)
     const steps = 60;
     for (let i = 0; i < steps; i++) {
-      ctx.fillStyle = viridisCss(i / (steps - 1));
+      ctx.fillStyle = stressCss(i / (steps - 1));
       ctx.fillRect(x0 + (i * barW) / steps, y0, barW / steps + 1, barH);
     }
     ctx.strokeStyle = 'rgba(226, 232, 240, 0.35)';
@@ -356,10 +356,6 @@ function deformationExtent(
   return { minX, minY, maxX, maxY };
 }
 
-function viridisCss(t: number): string {
-  const { r, g, b } = viridis(t);
-  return `rgb(${r},${g},${b})`;
-}
 
 /** Feszültség emberi formátumban a canvas-jelmagyarázathoz */
 function formatPaStress(v: number): string {

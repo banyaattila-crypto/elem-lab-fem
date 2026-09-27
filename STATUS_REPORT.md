@@ -2,7 +2,7 @@
 
 > **Projekt:** Interaktív, oktatási célú végeselem-módszer (FEM) játszótér — web-first PWA
 > **Utolsó frissítés:** 2026-09-27 · **v0.7.0** (verzió + build-ID a látható láblécben)
-> **Státusz:** 🟢 Élő: 8 modell, támasz/terhelés-séma annotáció, elosztott terhelés, MathPanel + NodePanel, **52/52 teszt**, build OK, **Vercel deploy élő** (elem-lab-fem.vercel.app)
+> **Státusz:** 🟢 Élő: **7 modell**, **CST + T6 elem**, Canvas 2D + WebGL (Three.js) 3D nézet, támasz/terhelés-séma annotáció, elosztott terhelés, M/V panel kurzor-kiolvasással, MathPanel + NodePanel, HU/EN, PWA, **73/73 teszt**, build OK, **Vercel deploy élő** (elem-lab-fem.vercel.app)
 
 ---
 
@@ -25,7 +25,7 @@ A felhasználó kész 2D modelleket variál csúszkákkal (terhelés, anyag, há
 | **Célcsoport** | Egyetemi/középiskolai hallgatók, tanárok, mérnökinformatikusok |
 | **Piaci rés** | Az egyetemi FEM-oktatás nagy része elmélet + Matlab; nincs szép, mobilos, magyar nyelvű, interaktív eszköz |
 | **Fő versenytársak** | SimScale (ipari, felhő), Ansys/Abaqus/COMSOL (drága, asztali), FEAScript (JS-könyvtár, nincs oktatási UI) |
-| **Piacméret** | FEA-szoftverpiac ≈ 7,6–9 Mrd USD (2026), évi 7–13% növekedéssel |
+| **Piacméret** | FEA-szoftverpiac ≈ 7,6–9 Mrd USD (2026), évi 7–13% növekedéssel — *piackutatási becslés, nincs elsődleges forrás megadva; a portfólió-követelményen nem múlik* |
 | **Monetizáció (későbbi)** | Freemium: alap szimulációk ingyen; Pro/iskolai licencek |
 
 ### 1.3 Projektjellemzők
@@ -44,9 +44,10 @@ A felhasználó kész 2D modelleket variál csúszkákkal (terhelés, anyag, há
 | Nyelv | **TypeScript** | Típusbiztos matematikai kód, jobb refaktorálás |
 | UI-keretrendszer | **Nincs (vanilla TS + DOM)** | Tanulási cél: a motor a lényeg, nem a framework |
 | FEM-mag | **Saját, TypeScriptben** | A solver megírása maga a tanulási élmény; böngészőben fut, szerver nélkül |
-| Elem-típus (MVP) | 1D rúdrács + 2D konstans feszültségű háromszög (CST) | Klasszikus, jól validálható, milliszekundumos futásidő |
-| Vizualizáció | **Canvas 2D** (később opcionálisan WebGL/Three.js) | Elég a 2D hőtérképhez, egyszerű, függőség nélküli |
+| Elem-típus | **2D háromszög: CST (3 csomópont) + T6 (6 csomópont, kvadratikus)** | Mindkettő a magban, váltóval azonos geometrián; a T6 adja a kvadratikus konvergenciát (hajlítási hiba 13,1% → 3,6%). Nincs külön 1D rúdelem — a rácsos híd is CST-háló |
+| Vizualizáció | **Canvas 2D** (2D nézet) + **Three.js / WebGL** (3D nézet, OrbitControls) | 2D: egyszerű, függőség nélküli, gyors; 3D: térbeli szemléltetés. Váltó a canvason, WebGL-hibánál automatikus 2D-esés |
 | Lineáris algebra | Saját ritka mátrix + **Conjugate Gradient** szolver | Tanulási érték; ha szűk lesz: `numeric.js`-típusú lib vagy wasm |
+| Képlet-renderelés | **KaTeX** (`katex@0.18`) | A MathPanel/NodePanel levezetéseit TeX-ből generálja |
 | PWA | Vite PWA plugin (manifest + service worker) | Telepíthető mobilon, offline működés |
 | Tesztelés | **Vitest** | Vite-natív; analitikus validációs tesztek a solverhoz |
 | Hosting | **Vercel** (Git-alapú CI/CD, ingyenes Hobby) + GitHub repo | `vercel.json` rögzíti: vite framework, `npm run build`, `dist` kimenet |
@@ -57,52 +58,70 @@ A felhasználó kész 2D modelleket variál csúszkákkal (terhelés, anyag, há
 
 ---
 
-## 3. Projektstruktúra (tervezett)
+## 3. Projektstruktúra (valós állapot)
 
 ```
 elemlab/
 ├── STATUS_REPORT.md          ← ez a fájl
-├── README.md                 ← repo leírás (GitHub)
+├── README.md / README.en.md  ← repo leírás (GitHub, két nyelven)
 ├── vercel.json               ← Vercel deploy konfiguráció
-├── vite.config.ts            ← Vite + PWA plugin
+├── vite.config.ts            ← Vite + PWA plugin + verzió/build-ID injektálás
 ├── tsconfig.json / package.json
 ├── docs/
-│   ├── fem-spec.md           ← EEM-mag matematikai specifikáció (képletekkel)
+│   ├── fem-spec.md           ← EEM-mag matematikai specifikáció (képletekkel) — lásd a T6-ra vonatkozó megjegyzést
 │   └── ui-vazlat.html        ← UI vázlat, böngészőben megnyitható
 ├── index.html
 ├── public/
 │   ├── manifest.webmanifest  ← PWA manifest
-│   └── icons/                ← PWA ikonok (SVG)
+│   └── icons/                ← PWA ikonok (icon.svg, icon-maskable.svg)
 ├── src/
-│   ├── main.ts               ← belépési pont + kattintáskezelés
+│   ├── main.ts               ← app állapot, modell-választó, kattintáskezelés, 2D/3D + CST/T6 váltó
+│   ├── style.css
+│   ├── version.ts            ← verzió + build-ID (Vite define-ből), window.ELEMLAB
 │   ├── fem/                  ← a számító mag (tisztán tesztelhető)
-│   │   ├── types.ts          ← Mesh, Node, Element, BC típusok
+│   │   ├── types.ts          ← Mesh, Node, Element, BC, megoldási típusok
 │   │   ├── linalg.ts         ← CSR ritka mátrix, Jacobi-előkondicionált CG
 │   │   ├── cst.ts            ← konstans feszültségű háromszögelem
-│   │   ├── assemble.ts       ← globális merevségi mátrix összeállítás
-│   │   └── solve.ts          ← megoldás DOF-eliminációval
+│   │   ├── t6.ts             ← kvadratikus T6 elem, 3-pontos Gauss-kvadratúra
+│   │   ├── assemble.ts       ← globális merevségi mátrix összeállítás (CST + T6)
+│   │   └── solve.ts          ← megoldás DOF-eliminációval, reakcióerőkkel
 │   ├── models/               ← előre definiált modellek
 │   │   ├── meshgen.ts        ← rács-hálógenerátor + anyagkatalógus
+│   │   ├── t6convert.ts      ← CST→T6 konverzió él-hashinggel
 │   │   ├── cantilever.ts     ← konzolgerenda (+ analitikus hajlás)
+│   │   ├── simplySupported.ts← egyszerűen tartott gerenda (+ M/V analitika)
+│   │   ├── fixedFixed.ts     ← kétvégén befogott gerenda
+│   │   ├── portalFrame.ts    ← portálkeret (csomópont-összeillesztett szalagháló)
+│   │   ├── corbel.ts         ← konzolos tartó (L-alak)
 │   │   ├── trussBridge.ts    ← rácsos híd
 │   │   └── plateWithHole.ts  ← lyukas lemez (+ Kt referencia)
-│   ├── viz/                  ← Canvas 2D vizualizáció
-│   │   ├── renderer.ts       ← hőtérkép + deformáció + kijelölés-kiemelés
+│   ├── viz/                  ← vizualizáció
+│   │   ├── renderer.ts       ← Canvas 2D: hőtérkép, deformáció, animáció, jelmagyarázat
+│   │   ├── webgl-renderer.ts ← Three.js 3D nézet, csúcs-színes mező, OrbitControls
+│   │   ├── annotate.ts       ← méretvonalak, támasz-/terhelés-szimbólumok, reakció-feliratok
+│   │   ├── diagrams.ts       ← M/V panel (két aldiagram, kurzor-kiolvasó doboz)
 │   │   ├── colormap.ts       ← viridis színtérkép
 │   │   └── picking.ts        ← elem-kiválasztás (screen→world)
 │   ├── ui/
-│   │   ├── mathpanel.ts      ← elemvizsgálat számítása + formázók
+│   │   ├── controls.ts       ← csúszkák, választók, terhelés-típus váltó
+│   │   ├── mathpanel.ts      ← elemvizsgálat számítása
 │   │   ├── mathpanel-view.ts ← KaTeX levezetés-renderelés
-│   │   ├── controls.ts       ← csúszkák, választók
+│   │   ├── nodepanel.ts      ← csomópontvizsgálat (elmozdulás, terhelés, reakció)
+│   │   ├── nodepanel-view.ts ← csomópont-panel nézete
 │   │   ├── lessons.ts        ← lecke-kártyák
 │   │   └── i18n.ts           ← nyelvkezelés
 │   └── locales/
 │       ├── hu.json
 │       └── en.json
-└── tests/
-    ├── linalg.test.ts        ← CSR + CG egységtesztek
-    ├── fem.test.ts           ← analitikus validáció (hajlás, Kt, Von Mises)
-    └── picking.test.ts       ← kiválasztás + transzformáció tesztek
+└── tests/                    ← 73 teszt, 8 fájl
+    ├── linalg.test.ts        ← 6  · CSR + CG egységtesztek
+    ├── fem.test.ts           ← 9  · analitikus validáció (hajlás, Kt, Von Mises)
+    ├── newmodels.test.ts     ← 17 · új modellek, reakciók, M/V analitika
+    ├── t6.test.ts            ← 8  · T6 merevtest, patch-teszt, hajlási konvergencia
+    ├── mathpanel.test.ts      ← 10 · MathPanel T6/CST levezetés, ε=B̄uₑ és σ=Dε azonosság
+    ├── colormap.test.ts       ← 11 · színtérkép: monoton világosság, simaság, egyárnyalat, tartomány
+    ├── node.test.ts          ← 7  · csomópont-egyensúly (ΣR + ΣF = 0)
+    └── picking.test.ts       ← 5  · kiválasztás + transzformáció
 ```
 
 ---
@@ -111,24 +130,30 @@ elemlab/
 
 ### 4.1 Az első verzióba kerül
 
-- [x] Saját 2D FEM-mag (CST + T6 elemek, saját CG-szolver)
-- [x] **8 kész modell**: konzolgerenda, egyszerűen tartott gerenda, kétvégén befogott gerenda, portálkeret, konzolos tartó, rácsos híd, lyukas lemez, kétlyukú lemez
-- [x] Támasztípusok: befogás, csukló, görgő (rollerX/rollerY); terheléstípusok: pontterhelés, elosztott terhelés (N/m)
-- [x] Rajz-annotáció: méretvonalak, támasz-szimbólumok, terhelés-nyilak, anyag/keresztmetszet infópanel
-- [x] Csúszkák: terhelő erő, anyag (acél / alumínium / fa), hálósűrűség
-- [x] Von Mises hőtérkép + deformált alak (Canvas 2D) — animáció később
+- [x] Saját 2D FEM-mag: **CST + T6** elem, saját Jacobi-előkondicionált CG-szolver, reakcióerő-számítás
+- [x] **7 kész modell**: konzolgerenda, egyszerűen tartott gerenda, kétvégén befogott gerenda, portálkeret, konzolos tartó (L-alak), rácsos híd, lyukas lemez
+- [x] Támasztípusok: befogás, csukló, görgő (rollerX/rollerY); terheléstípusok: pontterhelés, elosztott terhelés (N/m) — **pont ⇄ elosztott váltó** a vezérlőpanelen
+- [x] Rajz-annotáció: méretvonalak, támasz-szimbólumok, reakció-feliratok, terhelés-nyilak, anyag/keresztmetszet infópanel, statikai séma sor
+- [x] Csúszkák: terhelő erő, anyag (acél / alumínium / fa), hálósűrűség (1–5), deformáció-arány
+- [x] Von Mises hőtérkép + deformált alak, **deformáció-animáció** (▶/⏸, 1,6 s-os sin²-lengetés)
+- [x] **2D (Canvas) és 3D (WebGL/Three.js) nézet** váltóval, csúcs-színes folytonos mezővel és OrbitControls-szal
+- [x] **CST ⇄ T6 kapcsoló** a canvason (azonos geometria, két elemtípus összehasonlítása)
+- [x] **M/V diagramok** külön, nagy felbontású panelen (M felül, V alul, kitöltött görbeterülettel, kurzor-kiolvasó doboz)
 - [x] Lecke-kártyák (modellenként 1 magyarázó kártya)
 - [x] HU/EN nyelvváltás
-- [x] PWA: manifest + service worker (build OK)
-- [x] **Valós idejű elemvizsgálat (MathPanel)**: kattintásra teljes CST-levezetés KaTeX képletekkel, élő adatokkal, elemnavigációval (◀ ▶), canvas-kiemeléssel
-- [x] Analitikus validációs tesztek (Vitest) — 20/20 zöld
+- [x] PWA: manifest + service worker (build OK), verzió + build-ID a láblécben
+- [x] **Valós idejű elemvizsgálat (MathPanel)**: kattintásra teljes levezetés KaTeX képletekkel, élő adatokkal, elemnavigációval (◀ ▶), canvas-kiemeléssel — **CST és T6 elemtípusban egyaránt** (T6-nál természetes koordináták, Gauss-pontok, súlyozott B-átlag, 12×12 kₑ)
+- [x] **Valós idejű csomópontvizsgálat (NodePanel)**: elmozdulás, terhelés, reakcióerő (R = K·u − f), erőegyensúly-levezetés
+- [x] Analitikus validációs tesztek (Vitest) — **73/73 zöld** (8 fájl)
 
 ### 4.2 Szándékosan későbbre tolva
 
-- 3D-s elemek, másodrendű elemek (T6)
+- 3D-s (térfogati) elemek (Hexa-típusú elemcsalád)
+- **Határkövető háló generálása** (Delaunay / advancing front) a pontos Kt≈3 érdekében — a körre-projekciós kísérlet 2026-09-26-án kudarchoz vezetett, lásd a naplóban
+- **1D rúdelem** a magban (külön rúdrács-modellekhez, pl. hagyományos rácsos szerkezetekhez) — a rácsos híd jelenleg CST-háló
 - Saját geometriaszerkesztő / STL-import
-- WebGL (Three.js) renderer
 - Fiókok, felhő-mentés, megosztás
+- Portfólióoldal (a Fázis 4 maradéka)
 
 ---
 
@@ -137,10 +162,14 @@ elemlab/
 | Fázis | Tartalom | Becslés | Státusz |
 |---|---|---|---|
 | 0 | Projektváz: Vite + TS + PWA keret | 1 nap | 🟢 kész |
-| 1 | FEM-mag (CST) + validációs tesztek | 1–2 hét | 🟢 kész (15/15 teszt, build OK) |
-| 2 | UI, csúszkák, hőtérkép, MathPanel | 1–2 hét | 🟢 kész (MathPanel + KaTeX; kis mobil-polish maradt) |
-| 3 | Leckék, i18n, mobil polish | 1 hét | 🟡 leckék + i18n kész, mobil polish hátravan |
-| 4 | Deploy + portfólióoldal | 1–2 nap | 🟢 GitHub repo + Vercel deploy kész; portfólióoldal pending |
+| 1 | FEM-mag (CST) + validációs tesztek | 1–2 hét | 🟢 kész (15/15 teszt akkor, ma 73/73; build OK) |
+| 2 | UI, csúszkák, hőtérkép, MathPanel, mobil touch-polish | 1–2 hét | 🟢 kész (MathPanel + KaTeX + 44px érintési célok) |
+| 3 | Leckék, i18n, mobil polish | 1 hét | 🟢 kész (leckék, HU/EN, touch-action/overscroll) |
+| 4 | Deploy + portfólióoldal | 1–2 nap | 🟡 GitHub repo (publikus) + Vercel deploy kész; **portfólióoldal pending** |
+| 5 | T6 kvadratikus elem, WebGL/3D nézet, M/V panelek (v0.2.0–v0.7.0) | +1 hét | 🟢 kész |
+
+> A Fázis 5 a határesetvétel utáni bővítés: a 2026-09-26-i kereklyuk-kísérlet kudarcát
+> a T6 bevezetése és a határkövető háló későbbre tolása követte.
 
 ---
 
@@ -148,10 +177,16 @@ elemlab/
 
 A teljes, képletekkel ellátott specifikáció: **[docs/fem-spec.md](docs/fem-spec.md)**
 
-- Módszer: elmozdulás-alapú FEM, lineáris rugalmasságtan, síkfeszültség-állapot
-- Elem: 3 csomópontú háromszög, lineáris elmozdulástér, konstans feszültség (CST)
-- Egyensúly: **K·u = f** globális egyenletrendszer; megoldás Conjugate Gradient módszerrel
+> ⚠️ A specifikáció a **CST** elemre készült (2026-09-26.); a T6 kvadratikus elem
+> később került a magba, a `docs/fem-spec.md` T6-fejezete még hiányzik. A jelenlegi
+> képletek: `src/fem/t6.ts` (Gauss-pontok, alakfüggvények, J⁻¹ láncszabály, B/D).
+
+- Módszer: elmozdulás-alapú FEM, lineáris rugalmasságtan, **síkfeszültség-állapot**, egységnyi vastagság helyett modellenként megadott t (gerendák 20 mm, rácsos híd 10 mm, lemez 5 mm)
+- Elem: 3 csomópontú háromszög lineáris elmozdulástérrel (CST, konstans feszültség), illetve opcionálisan 6 csomópontú kvadratikus háromszög (T6, 3-pontos Gauss-kvadratúra)
+- Egyensúly: **K·u = f** globális egyenletrendszer; megoldás Jacobi-előkondicionált Conjugate Gradient módszerrel, DOF-eliminációval
+- Reakcióerők: **R = K·u − f** a rögzített csomópontokon (a kiegyensúlyozatlan erőmaradék)
 - Kiértékelés: elemenkénti feszültség → Von Mises jellemző → hőtérkép
+- Validáció: analitikus képletekkel (hajlítás, Kt, M/V = dM/dx, reakció-egyensúly ΣR = −F) — 73 teszt
 
 ---
 
@@ -159,11 +194,15 @@ A teljes, képletekkel ellátott specifikáció: **[docs/fem-spec.md](docs/fem-s
 
 | # | Kockázat / kérdés | Kezelés |
 |---|---|---|
-| 1 | Nagy hálónál (30k+ elem) lassulhat a TS-szolver | Hálósűrűség-felső korlát; később wasm-motor |
-| 2 | A numerikus stabilitás ( kondíciószám ) ronthatja a pontosságot | Analitikus tesztek + relatív hiba küszöb a CI-ban |
+| 1 | Nagy hálónál (sűrűség-csúszka 5) lassulhat a TS-szolver | Hálósűrűség-felső korlát (1–5); később wasm-motor |
+| 2 | A numerikus stabilitás (kondíciószám) ronthatja a pontosságot | Analitikus tesztek + relatív hiba küszöb a CI-ban |
 | 3 | Színtér diszlexiabarát diszkrimináció | ColorBrewer/viridis-szerű paletta, színvakság-barát |
 | 4 | ~~Nyitott: PWA-plugin / service worker stratégia~~ | **Lezárva:** vite-plugin-pwa 0.21, generateSW, autoUpdate |
-| 5 | ~~Nyitott: repo név / hosting~~ | **Lezárva:** `elem-lab-fem` (privát) + Vercel deploy |
+| 5 | ~~Nyitott: repo név / hosting~~ | **Lezárva:** `elem-lab-fem` (**publikus** repo) + Vercel deploy |
+| 6 | **CST hajlítási hibája 13,1%** a konzolgerenda analitikushoz képest | A T6 elem ezt 3,6%-ra javítja; a canvason kapcsoló van CST ⇄ T6 között, azonos geometrián. A README a pontosságot sávokkal (CST ±35%) dokumentálja |
+| 7 | **Lyukas lemez Kt-je 4,1 → 5,0 a sűrűséggel nő**, a pontos Kt≈3 nem érhető el konform rácsos hálóval | Nyitott: határkövető (Delaunay / advancing-front) hálógenerátor. A körre-projekciós kísérlet 2026-09-26-án szilánk-elemeket és üres foltokat adott → **visszavonva** |
+| 8 | WebGL / GPU hiánya WebView-környezetben | `try/catch` a renderer előkészítésénél + indítási hiba-banner: az app 2D-ben is fut tovább |
+| 9 | `docs/fem-spec.md` a T6 elem kifejlesztése előtti állapotot dokumentálja | Nyitott: T6-fejezet a specifikációba (forrás: `src/fem/t6.ts`) |
 
 ---
 
@@ -201,3 +240,7 @@ A teljes, képletekkel ellátott specifikáció: **[docs/fem-spec.md](docs/fem-s
 | 2026-09-27 | **v0.5.0 — Terhelés-váltó + M/V diagramok**: pontterhelés ⇄ elosztott váltó a vezérlőpanelen (gerenda-modelleknél; a konzolgerenda pont-, az egyszerűen tartott elosztott alapbeállítással indul; az analitikus képletek típusfüggően váltanak); hajlítási feszültség- és nyíróerő-profil (M/V) a canvas alatti sávban a gerenda-modelleknél; README.hu + README.en teljes frissítése (8 modell, T6/WebGL, 52 teszt, demó-link) |
 | 2026-09-27 | **v0.6.0 — Reakció-értékek a sémában + M/V analitikus validáció + kétlyukú lemez eltávolítva**: támasz-szimbólumok mellett zöld R = … kN/N feliratok (a legközelebbi csomópont reakcióiból); M/V tesztek analitikus gerenda-összefüggésekre (Δσ = M/W és V = dM/dx; egyszerű tartás: M-csúcs középen + V(L/4), konzol: M = P·(L−x) + V állandó); a V-kiszámítás átállt a zajos elemszintű τ-integrálról a dM/dx deriváltra; kétlyukú lemez modell + lecke + tesztek kivéve (7 modell); **51/51 teszt** |
 | 2026-09-27 | **v0.7.0 — M/V panel kurzorral**: a diagramok kiköltöztek a fő canvasonból egy külön, nagy felbontású panelre (devicePixelRatio-tudatos); M most már kN·m-ben (M = Δσ·W); két al-diagram (M felül, V alul), kitöltött görbeterülettel; egér-kurzor: függőleges vonal + pötty a görbéken + kiolvasó doboz (x, M(x), V(x)); új teszt: egyszerű tartás + középi pontterhelés (M(L/2) = PL/4·W, V ugrás ±P/2 előjelváltással); **52/52 teszt** |
+| 2026-09-27 | **STATUS_REPORT.md konzisztencia-javítás (kódváltozás nélkül)**: a fejléc, az MVP-lista és a mérföldkövek a valós állapothoz igazítva — **8 → 7 modell** (a kétlyukú lemez v0.6.0-ban kivéve), a T6 és a WebGL/Three.js kikerült a „későbbre tolva" listából (mindkettő kész), a 3. fejezet struktúrája a tényleges fájlokra frissült (52 teszt, 6 fájl; 11 korábban nem listázott forrásfájl), a technológiai táblázatból kivettük a nem létező 1D rúdelemet és bekerült a KaTeX; 4 új kockázatsor (CST 13,1% hajlítási hiba, Kt≈3 határkövető háló, WebView/WebGL esés, elavult fem-spec); 3. fázis lezárva. **Ellenőrzve:** `npx vitest run` 52/52, `package.json` 0.7.0, `src/models/` = 7 modell |
+| 2026-09-27 | **Dokumentáció-szinkron (kódváltozás nélkül)**: `docs/fem-spec.md` → V1.1 (új 4. fejezet: T6 csúcssorrend, alakfüggvények, 3 pontos Gauss-kvadratúra, Jacobian-láncszabály, 12×12 merevség, Gauss-átlagos feszültség, CST→T6 él-hashing; új 5.3 szakasz-terhelés és 7.2 reakcióerők; a 9. fejezet korlát-táblázata 7 sorra bővült); `README.md` + `README.en.md` → 7 modell, 52 teszt, v0.7.0, új **Korlátok / Known limitations** szakasz. Talált hibák: (1) a T6 **nem** alapértelmezett elem, a `state.elementType` CST-ről indul — a korábbi „alapértelmezett T6" állítás mindkét fájlban hamis volt, javítva; (2) **MathPanel T6 módban csak a sarok-háromszögre számol CST-képletekkel** (`mathpanel.ts → inspectElement()` a `nodes[0..2]`-t olvassa, az élközépcsúcsokat figyelmen kívül hagyja) → a README korlátok közé került, kódmódosítás nem történt |
+| 2026-09-27 | **MathPanel T6-támogatás (a korábbi sarok-háromszög-hiba javítva)**: az `inspectElement()` felismeri a háló elemtípusát, és T6-nál a teljes kvadratikus elem adataival számol — 6 csúcs, természetes koordináták, 3 Gauss-pont `(L₁,L₂)`/`w`/`detJ` táblázat, súlyozott B-átlag `B̄ = Σ(w·detJ·B)/Σ(w·detJ)`, 12×12 `kₑ = t·Σ(w·detJ·BᵀDB)`, 12 elmozdulás, Gauss-átlagos ε és σ. A nézet (`mathpanel-view.ts`) típusfüggő: ugyanaz a 8 szekció, T6-nál a kvadratikus elemre jellemző képletekkel; a 12×12-es mátrix a meglévő `.katex-display` overflow-on görget. Új: elemtípus-címke a panel fejlécében, `.mp-table` stílus. **Új tesztfájl `tests/mathpanel.test.ts` (10 teszt)**: a mutatott `kₑ` és `σ` megegyezik a szolver `t6Stiffness`/`t6Stress` eredményével, `ε = B̄·uₑ` és `σ = D·ε` pontosan, `Σw·detJ = A`, a középcsúcsok valóban élfelezők, CST-regresszió nincs, a nézet HU/EN nyelven NaN nélkül renderel. **Regresszióellenőrzés:** a régi hibás ággal szimulálva 7/10 teszt elbukik, a fixxel mind zöld. **62/62 teszt**, typecheck és build OK. A README-korlátokból a MathPanel-sor kivéve, helyére a Gauss-átlag korlát került (HU + EN). |
+| 2026-09-27 | **Feszültség-térkép: egyárnyalatú kék, Oklab-interpolációval** (a „szivárvány" kérés): a korábbi 5 pontos viridis-törpe helyett 9 kontrollpontos **sötétkék → világoskék** skála (#0a1830 → #c6e5f4), amelyet **Oklab-színtérben** interpolálunk, így a színátmenet egyenletes (nincs fényerő-ingadozás a lépcsők között, nincs banding). Egyetlen árnyalat, monoton világossággal: a szín kizárólag a feszültséget hordozza, a sötét alkalmazói háttéren (#0f172a) a gyenge feszültség visszavonódik, a csúcs kiemelkedik. **A skála most egyetlen forrásból szolgál ki mindhárom nézetnek** — a WebGL rendererben eddig duplikált, külön beégetett kontrolpontok megszűntek, helyettük a közös `colormap.ts` (a duplikáció volt a drift kockázata). A Canvas-legenda 60 lépés, a HTML-legenda korábbi 10 stoppja helyett **64 stoppos** gradiens (a 10 stoppos sRGB-interpoláció sávkódást adott). **Talált és javított hiba:** az első implementációban a `srgbToLinear()` 0–1 helyett 0–255 inputet kapott → az egész skála fehérre csapott; az Oklab-visszafordítás klipszelt. **Új tesztfájl `tests/colormap.test.ts` (11 teszt)**: végpontok, `b ≥ g ≥ r` minden mintán (nincs szivárvány), monoton világosság, legnagyobb szomszédos L-lépés < 0,01 és < 3× az átlag, szomszédos színek távolsága < 12, tartomány/NaN-kezelés, 64 stoppos legenda-gradiens. **Regresszióellenőrzés:** a 0–255/0–1 hibával szimulálva 5/11 teszt elbukik, a fixxel mind zöld. A `docs/fem-spec.md` 7.4 szakasz és a `docs/ui-vazlat.html` mockup is az új skálára átírva. **73/73 teszt**, typecheck és build OK. |

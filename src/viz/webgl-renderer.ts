@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { Mesh, SolutionResult } from '../fem/types';
+import { stressRgb } from './colormap';
 
 export interface WebGLRenderOptions {
   deformationScale: number;
@@ -20,35 +21,6 @@ export interface WebGLRenderOptions {
   highlight?: number | null;
   highlightNode?: number | null;
   phase?: number;
-}
-
-/** Viridis színtérkép — a colormap.ts kontrolpontjai alapján, GPU-hoz 0..1 */
-function viridisColor(t: number, out: THREE.Color): THREE.Color {
-  // durva, de a GPU-megjelenítéshez elegendő polinom-közelítés
-  const x = Math.min(1, Math.max(0, t));
-  // a viridis 5 kontrolpontjának lineáris interpolációja
-  const stops: Array<[number, number, number, number]> = [
-    [0.0, 68, 1, 84],
-    [0.25, 59, 82, 139],
-    [0.5, 33, 145, 140],
-    [0.75, 94, 201, 98],
-    [1.0, 253, 231, 37],
-  ];
-  for (let i = 0; i < stops.length - 1; i++) {
-    const [t0, r0, g0, b0] = stops[i]!;
-    const [t1, r1, g1, b1] = stops[i + 1]!;
-    if (x >= t0 && x <= t1) {
-      const f = (x - t0) / (t1 - t0);
-      out.setRGB(
-        (r0 + f * (r1 - r0)) / 255,
-        (g0 + f * (g1 - g0)) / 255,
-        (b0 + f * (b1 - b0)) / 255,
-      );
-      return out;
-    }
-  }
-  out.setRGB(253 / 255, 231 / 255, 37 / 255);
-  return out;
 }
 
 export class WebGLRenderer {
@@ -159,7 +131,8 @@ export class WebGLRenderer {
       positions[n.id * 3 + 1] = n.y + d.y * opts.deformationScale * phase;
       positions[n.id * 3 + 2] = 0;
       const vm = vmCount[n.id]! > 0 ? vmSum[n.id]! / vmCount[n.id]! : 0;
-      viridisColor(vm / Math.max(opts.stressMax, 1e-12), color);
+      const { r, g, b } = stressRgb(vm / Math.max(opts.stressMax, 1e-12));
+      color.setRGB(r / 255, g / 255, b / 255);
       colors[n.id * 3] = color.r;
       colors[n.id * 3 + 1] = color.g;
       colors[n.id * 3 + 2] = color.b;

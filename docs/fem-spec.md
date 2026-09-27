@@ -1,9 +1,13 @@
 # ElemLab — EEM (FEM) mag matematikai specifikáció
 
-> **Verzió:** 1.0 · **Dátum:** 2026-09-26 · **Státusz:** megvalósítva és validálva (15/15 teszt)
+> **Verzió:** 1.1 · **Dátum:** 2026-09-27 · **Státusz:** megvalósítva és validálva (62/62 teszt)
 >
 > Ez a dokumentum az `src/fem/` modul teljes matematikai alapját tartalmazza.
 > A képletek LaTeX-ben íródnak; a forráskód az azonos jelöléseket használja.
+>
+> **V1.1 változás:** bekerült a **4. fejezet: T6 kvadratikus elem** (2026-09-27, v0.7.0-ig),
+> továbbá a reakcióerők (7.2) és az elosztott terhelés (5.2) képlete. A 2–3. és 5–7.
+> fejezetek számozása eggyel előrébb tolódott.
 
 ---
 
@@ -73,8 +77,17 @@ Ez jelenik meg a hőtérképen. Forrás: `cst.ts → vonMises()`
 ### 2.1 Tartomány-felbontás
 
 A tartományt háromszögekre bontjuk: $\Omega \approx \bigcup_e \Omega_e$.
-Az ElemLab konstans feszültségű háromszögelemet (**CST — Constant Strain Triangle**) használ:
-3 csomópont, elemenként **6 szabadsági fok** $\mathbf{u}_e = [u_{x1}, u_{y1}, u_{x2}, u_{y2}, u_{x3}, u_{y3}]^\top$.
+Az ElemLab **kétféle háromszögelemet** használ:
+
+| Elem | Csomópontok | DOF | Alakfüggvény | Alakváltozás | Feszültség |
+|---|---|---|---|---|---|
+| **CST** (Constant Strain Triangle) | 3 sarok | 6 | lineáris | lineáris | konstans |
+| **T6** (kvadratikus, izoparaméteres) | 3 sarok + 3 élközép | 12 | kvadratikus | lineáris változás | Gauss-pontonként változik |
+
+A CST a gyors, egyszerű út; a **T6 adja a lényegesen jobb hajlítási pontosságot**
+(13,1% → 3,6% hiba a konzolgerenda analitikushoz képest, 4.6. fejezet).
+Az alkalmazásban a felhasználó kapcsolóval vált a kettő között azonos geometrián
+(`state.elementType`); **induláskor CST az aktív**.
 
 ### 2.2 Alakfüggvények
 
@@ -164,12 +177,168 @@ $$
 
 ---
 
-## 4. Globális rendszer
+## 4. A T6 kvadratikus elem
 
-### 4.1 Összeállítás (assembly)
+### 4.1 Csúcssorrend és geometria
 
-Minden $e$ elemre: a $\mathbf{k}_e$ 6×6 mátrix elemeit a globális szabadsági fok-indexekre
-szórjuk. A csomópont $n$ DOF-jai:
+A T6 elem hat csomópontja, **csúcs-sorrendben**:
+
+$$
+\mathbf{u}_e = [u_{x1}, u_{y1}, \; u_{x2}, u_{y2}, \; u_{x3}, u_{y3}, \; u_{x4}, u_{y4}, \; u_{x5}, u_{y5}, \; u_{x6}, u_{y6}]^\top
+$$
+
+ahol az 1–3 index a **sarokcsúcsok** (CCW sorrendben), a 4–6 az oldalközépek:
+$m_{12}$ (1–2 él), $m_{23}$ (2–3 él), $m_{31}$ (3–1 él).
+
+Természetes (területi) koordináták: $L_1 + L_2 + L_3 = 1$, ahol $L_3 = 1 - L_1 - L_2$.
+
+| Csúcs | $(L_1, L_2, L_3)$ |
+|---|---|
+| 1 (sarok) | $(1, 0, 0)$ |
+| 2 (sarok) | $(0, 1, 0)$ |
+| 3 (sarok) | $(0, 0, 1)$ |
+| 4 ($m_{12}$) | $(\tfrac{1}{2}, \tfrac{1}{2}, 0)$ |
+| 5 ($m_{23}$) | $(0, \tfrac{1}{2}, \tfrac{1}{2})$ |
+| 6 ($m_{31}$) | $(\tfrac{1}{2}, 0, \tfrac{1}{2})$ |
+
+A geometria **izoparaméteres**: ugyanaz az $N_i(L)$ adja az elmozdulást és a koordinátát.
+A sarok-háromszög területe pozitív kell legyen (CCW), különben a kód hibát dob.
+Forrás: `t6.ts → t6Geometry()`
+
+### 4.2 Alakfüggvények
+
+$$
+\begin{aligned}
+N_1 &= L_1(2L_1 - 1), & N_2 &= L_2(2L_2 - 1), & N_3 &= L_3(2L_3 - 1) \\
+N_4 &= 4L_1L_2,     & N_5 &= 4L_2L_3,     & N_6 &= 4L_3L_1
+\end{aligned}
+$$
+
+Partíciós egység: $\sum_{i=1}^{6} N_i = 1$ minden pontban. Az éleken a két szomszédos
+középcsúcs nem járul hozzá ($N_4 = 0$ a 2–3 élen), tehát az elem **C¹-kompatibilis**:
+szomszédos T6-elemek közös éleken a feszültségmező folytonos.
+Forrás: `t6.ts → t6Shape()`
+
+**Deriváltak** a láncszabállyal ($\partial L_3/\partial L_1 = \partial L_3/\partial L_2 = -1$):
+
+$$
+\frac{\partial N_i}{\partial L_1} = \left[\, 4L_1 - 1,\; 0,\; 1 - 4L_3,\; 4L_2,\; -4L_2,\; 4(L_3 - L_1) \,\right]_i
+$$
+
+$$
+\frac{\partial N_i}{\partial L_2} = \left[\, 0,\; 4L_2 - 1,\; 1 - 4L_3,\; 4L_1,\; 4(L_3 - L_2),\; -4L_1 \,\right]_i
+$$
+
+Forrás: `t6.ts → t6ShapeDerivs()`
+
+### 4.3 Három pontos Gauss-kvadratúra
+
+A háromszög referencia-területe $\tfrac{1}{2}$; a súlyok ehhez igazodnak
+($\sum w_i = \tfrac{1}{2}$, egyenként $w_i = \tfrac{1}{6}$). A pontok az élek középpontjai:
+
+| Gauss-pont | $(L_1, L_2)$ | $w$ |
+|---|---|---|
+| 1 | $(\tfrac{1}{2}, 0)$ | $\tfrac{1}{6}$ |
+| 2 | $(\tfrac{1}{2}, \tfrac{1}{2})$ | $\tfrac{1}{6}$ |
+| 3 | $(0, \tfrac{1}{2})$ | $\tfrac{1}{6}$ |
+
+**Pontosság:** a $\mathbf{B}$ mátrix lineáris $L$-ben, így a $\mathbf{B}^\top \mathbf{D} \mathbf{B}$
+integrandus **kvadratikus** — ezt a szabály **egzaktan** integrálja (ezért elég 3 pont).
+Forrás: `t6.ts → T6_GAUSS`
+
+### 4.4 Jacobian és láncszabály
+
+A geometriai leképezés: $x = \sum_i N_i x_i$, $y = \sum_i N_i y_i$, amiből a Jacobian:
+
+$$
+\mathbf{J} = \begin{bmatrix} \dfrac{\partial x}{\partial L_1} & \dfrac{\partial x}{\partial L_2} \\[4pt] \dfrac{\partial y}{\partial L_1} & \dfrac{\partial y}{\partial L_2} \end{bmatrix},
+\qquad
+\det \mathbf{J} = j_{11} j_{22} - j_{12} j_{21}
+$$
+
+Az inverz-transzponzált láncszabály adja a szükséges deriváltakat:
+
+$$
+\frac{\partial N_i}{\partial x} = \frac{j_{22}\,\frac{\partial N_i}{\partial L_1} - j_{21}\,\frac{\partial N_i}{\partial L_2}}{\det \mathbf{J}},
+\qquad
+\frac{\partial N_i}{\partial y} = \frac{-j_{12}\,\frac{\partial N_i}{\partial L_1} + j_{11}\,\frac{\partial N_i}{\partial L_2}}{\det \mathbf{J}}
+$$
+
+azaz $\left(\mathbf{J}^{-1}\right)^\top \cdot \left[\frac{\partial N_i}{\partial L_1}, \frac{\partial N_i}{\partial L_2}\right]^\top$.
+
+A $\det \mathbf{J} \le 0$ eset a kód hibát dob (inverz vagy torzult elem).
+Forrás: `t6.ts → t6BMatrix()`
+
+### 4.5 B mátrix (3×12)
+
+Egy Gauss-pontban, $i = 1 \dots 6$ csúcsra:
+
+$$
+\mathbf{B}(\mathbf{B}_g) = \begin{bmatrix}
+\dfrac{\partial N_i}{\partial x} & 0 \\[6pt]
+0 & \dfrac{\partial N_i}{\partial y} \\[6pt]
+\dfrac{\partial N_i}{\partial y} & \dfrac{\partial N_i}{\partial x}
+\end{bmatrix}_{i=1}^{6}
+$$
+
+A $\mathbf{B}$ itt **nem konstans**: minden Gauss-pontban újraszámoljuk.
+Forrás: `t6.ts → t6BMatrix()`
+
+### 4.6 A T6 merevségi mátrix
+
+$$
+\boxed{\;\mathbf{k}_e = t \sum_{g=1}^{3} w_g \, \det\mathbf{J}_g \;\, \mathbf{B}_g^\top \mathbf{D}\, \mathbf{B}_g\;}
+$$
+
+- Dimenzió: $12 \times 12$
+- Tulajdonságai: **szimmetrikus**, **pozitív szemidefinit** (6 merevtest-mozgásra nulla),
+  a 6×6-os CPT-merevtest-mátrix nemnulla zéruszerkezetét a kvadratikus tér adja
+- A súlyt a vastagság egyszerre szorozza be (`k.map(row => row * thickness)`), nem Gauss-pontonként
+
+**Ellenőrzött numerikus eredmény** (konzolgerenda, azonos háló, `tests/t6.test.ts`):
+
+| Elem | $\delta_{\max} / \delta_{\text{analitikus}}$ | Hiba |
+|---|---|---|
+| CST | 0,869 | 13,1% |
+| **T6** | **1,036** | **3,6%** |
+
+Forrás: `t6.ts → t6Stiffness()`
+
+### 4.7 Elemi feszültség — Gauss-átlag
+
+Az elemi feszültség nem konstans; a kód a három Gauss-pont értékét **súlyozott átlagolja**,
+és ezt az értéket használja a hőtérképhez és a Von Mises kiértékeléshez:
+
+$$
+\boldsymbol{\sigma}_e = \frac{\sum_g w_g \det\mathbf{J}_g \, \mathbf{D} \mathbf{B}_g \mathbf{u}_e}{\sum_g w_g \det\mathbf{J}_g}
+$$
+
+Ennek oka a vizualizáció: a színkép elemenkénti egy értéket kér. A 3D nézet ezen felül
+a **csúcs-színezéssel** közelít, ami a környező elemek értékeinek átlagolása a csúcsban.
+Forrás: `t6.ts → t6Stress()`
+
+### 4.8 CST → T6 hálókonverzió
+
+Minden CST háromszögből **egy** T6 lesz; a három él közepére új csomópont kerül.
+A közös élek közép-csomópontjait **él-hashing** (`min:max` kulcs) osztja meg, így a
+háló **konform** marad — nincs szabad él, nincs rés a szomszédos elemek között.
+
+**Peremfeltételek átvitelét:**
+- **Rögzítés:** ha egy él mindkét sarokcsúcsa rögzített, az él közép-csomópontja is rögzített
+  (különben az él középső pontja szabad lenne → külön megnyúlás az elemen belül)
+- **Terhelés:** a sarokcsomópontok azonosítói változatlanok, ezért a csomóponti erők
+  ($\mathbf{f}$) érvényesek maradnak; az új középcsúcsok terhelése nulla
+
+Forrás: `models/t6convert.ts → convertToT6()`
+
+---
+
+## 5. Globális rendszer
+
+### 5.1 Összeállítás (assembly)
+
+Minden $e$ elemre: a $\mathbf{k}_e$ mátrix elemeit (CST: 6×6, T6: 12×12) a globális
+szabadsági fok-indexekre szórjuk. A csomópont $n$ DOF-jai:
 
 $$
 \text{dof}(n) = (2n,\; 2n+1)
@@ -185,7 +354,7 @@ A rendszer: $\mathbf{K}\,\mathbf{u} = \mathbf{f}$, ahol $\mathbf{f}$ a csomópon
 $\mathbf{K}$ ritka, szimmetrikus, pozitív definit a rögzítések után.
 Forrás: `assemble.ts → assemble()`
 
-### 4.2 Peremfeltételek: DOF-elimináció
+### 5.2 Peremfeltételek: DOF-elimináció
 
 A rögzített csomópontok DOF-jait ($\mathbf{u}_c = \mathbf{0}$) **kihagyjuk** a rendszerből.
 A szabadsági fokokat felosztjuk: $\mathbf{u} = [\mathbf{u}_f, \mathbf{u}_c]^\top$, ahonnan:
@@ -202,11 +371,40 @@ $$
 Az így kapott $\mathbf{K}_{ff}$ **pozitív definit** → Conjugate Gradient alkalmazható.
 Forrás: `solve.ts → partition()`
 
+### 5.3 Terhelések: pont- és szakasz-menti terhelés
+
+**Pontterhelés** a szabad DOF-khoz közvetlenül kerül: $\mathbf{f}_i = F_i$.
+
+**Elosztott terhelés** a `bc.distributed` mezőben, $q_y$ [N/m] egységgel, vízszintes
+szakaszra $(x_1, y) \rightarrow (x_2, y)$ megadva. A megoldás **nem elem-belső integrál**,
+hanem **szakasz-szintű erő-megosztás**:
+
+1. A szakasz teljes ereje: $\displaystyle F_{\text{össz}} = q_y \cdot L$, ahol
+   $L = \lVert (x_2 - x_1, \, y_2 - y_1) \rVert$ [m] → $F_{\text{össz}}$ [N]
+2. A szakasz **belső** csomópontjait kiválasztjuk (a vízszintes és a függőleges
+   befoglaló doboz alapján, $10^{-6}$ toleranciával)
+3. Mindegyikhez azonos súlyt rendelünk, és a teljes erőt arányosan szétosztjuk:
+
+$$
+f_{i,y} = F_{\text{össz}} \cdot \frac{w_i}{\sum_j w_j},
+\qquad \text{csak az } y \text{ DOF-ra, } f_{i,x} = 0
+$$
+
+Ez **hálósűrűségtől független** eloszlást ad (finomabb hálón ugyanazok az erők),
+de a valódi feszültségmező közelítése helyett az eredőerőt tartja meg pontosan:
+$\sum_i f_{i,y} = q_y \cdot L$ minden sűrűségnél. Ez oktatási célból a helyes
+választás: a terhelőerő nagysága soha nem "úszik" a háló finomításával.
+
+**Korlát:** a módszer vízszintes szakaszra és $y$ irányú terhelésre van szűkítve
+($\partial q_x / \partial x$ nincs implementálva). A $q_y$ **nem** szorozódik a
+lemezvastagsággal: a 2D modellben a terhelés a keresztmetszet egységnyi hosszára vonatkozik.
+Forrás: `assemble.ts → assemble()` (`onSegment`, `nodeWeight`)
+
 ---
 
-## 5. A Conjugate Gradient módszer
+## 6. A Conjugate Gradient módszer
 
-### 5.1 Algoritmus (Jacobi előkondicionálóval)
+### 6.1 Algoritmus (Jacobi előkondicionálóval)
 
 Adott $\mathbf{A} = \mathbf{K}_{ff}$ SPD mátrix és $\mathbf{b} = \mathbf{f}_f$ vektor:
 
@@ -226,7 +424,7 @@ $$
 
 ahol $\mathbf{M} = \operatorname{diag}(\mathbf{A})$ (Jacobi előkondicionáló).
 
-### 5.2 Megállási feltétel
+### 6.2 Megállási feltétel
 
 $$
 \frac{\|\mathbf{r}_k\|_2}{\|\mathbf{b}\|_2} < \varepsilon_{\text{tol}} \qquad (\varepsilon_{\text{tol}} = 10^{-10})
@@ -237,7 +435,7 @@ prekondicionált $\mathbf{r}^\top\mathbf{M}^{-1}\mathbf{r}$-felülettel — ez u
 átlóknál korai kilépést okozhat (bukta a tesztben is).
 Forrás: `linalg.ts → conjugateGradient()`
 
-### 5.3 Ritka mátrix-tárolás (CSR)
+### 6.3 Ritka mátrix-tárolás (CSR)
 
 A $\mathbf{K}$ mátrix **Compressed Sparse Row** formátumban él:
 
@@ -255,9 +453,9 @@ Forrás: `linalg.ts → SparseMatrix`
 
 ---
 
-## 6. Utófeldolgozás
+## 7. Utófeldolgozás
 
-### 6.1 Elemi feszültség
+### 7.1 Elemi feszültség
 
 Minden elemre, az elemi elmozdulás-vektorból $\mathbf{u}_e$:
 
@@ -267,22 +465,58 @@ $$
 $$
 
 A CST konstans feszültségű elem: $\boldsymbol{\sigma}_e$ az elemen belül **állandó**.
-Forrás: `cst.ts → elementStress()`
+A T6 esetén a feszültség Gauss-pontonként számolódik, és a hőtérképhez súlyozott
+átlagot használ (lásd a 4.7. fejezetet).
+Forrás: `cst.ts → elementStress()`, `t6.ts → t6Stress()`
 
-### 6.2 Deformált alak
+### 7.2 Reakcióerők
+
+A DOF-elimináció miatt a rögzített csomópontok $\mathbf{R} = \mathbf{K}\,\mathbf{u} - \mathbf{f}$
+maradékából számíthatók vissza — ahol $\mathbf{u}$ a **teljes** (rögzített DOF-okkal együtt)
+elmozdulásvektor, $\mathbf{u}_c = 0$ helyettesítéssel:
+
+$$
+\mathbf{R}_c = \left(\mathbf{K}\,\mathbf{u} - \mathbf{f}\right)_c
+$$
+
+**Azonosító teszt (erőegyensúly):** ha a modell nincs saját súlyterhelés alatt, a
+külső terhelés és a reakciók összege nulla:
+
+$$
+\sum_{i \in c} \mathbf{R}_i + \sum_i \mathbf{F}_i = \mathbf{0}
+\quad \Longrightarrow \quad \sum_{i \in c} \mathbf{R}_i = -\sum_i \mathbf{F}_i
+$$
+
+Ez a `tests/node.test.ts` 7 tesztjének egyik ellenőrzési kritériuma (numerikus nulla).
+A reakció ugyanannak a támasznak a **legközelebbi csomópontjának** értéke, ezért a
+séma felirata a támasz-szimbólum mellé kerül, nem magához a szimbólumhoz igazítva.
+Forrás: `solve.ts → solve()` (`reactions: Map<number, Vec2>`)
+
+### 7.3 Deformált alak
 
 A megjelenítés: $\tilde{\mathbf{x}} = \mathbf{x} + s\cdot\mathbf{u}$, ahol $s$ a
-deformáció-nagyítás (felhasználói csúszka; az elmozdulások mikrométer-méretűek).
+deformáció-nagyítás (felhasználói csúszka; az elmozdulások mikrométer-méletűek).
+Az animáció a deformálatlan és a deformált alak között ingad:
+$s(t) = s_{\max}\,\sin^2(\pi t / T)$ a $T = 1{,}6$ s periódussal.
 
-### 6.3 Színképzés
+### 7.4 Színképzés
 
-A hőtérkép: $c = \text{viridis}\!\left(\sigma_{\text{vM}}^{(e)} / \max_e \sigma_{\text{vM}}^{(e)}\right)$
+A hőtérkép: $c = \mathcal{C}\!\left(\sigma_{\text{vM}}^{(e)} / \max_e \sigma_{\text{vM}}^{(e)}\right)$,
+ahol $\mathcal{C}$ az **egyárnyalatú kék** lámpatörpe (`src/viz/colormap.ts`): 9 kontrollpont
+#0a1830 → #c6e5f4, **Oklab-színtérben interpolálva**, így a színátmenet egyenletes
+(nincs fényerő-ingadozás a lépcsők között). Egyetlen árnyalat, monoton világossággal:
+a szín kizárólag a feszültség nagyságát hordozza. A Canvas 2D, a WebGL 3D és a
+HTML-legenda ugyanazt a $\mathcal{C}$-t használja, egyetlen forrásból.
+
+A 3D (WebGL) nézet ezen felül **csúcs-színezést** használ: a színt a csúcshoz kapcsolódó
+elemek $\sigma_{\text{vM}}$ értékeinek átlagából számolja, ami a folytonos mező
+közelítése egy véges elemhálón.
 
 ---
 
-## 7. Validáció — analitikus referenciaeredmények
+## 8. Validáció — analitikus referenciaeredmények
 
-### 7.1 Konzolgerenda (Euler–Bernoulli)
+### 8.1 Konzolgerenda (Euler–Bernoulli)
 
 Végterhelésű konzolgerenda szabad végi hajlása:
 
@@ -290,11 +524,39 @@ $$
 \delta = \frac{P\,L^3}{3\,E\,I}, \qquad I = \frac{t\,H^3}{12}
 $$
 
-A CST-számítás finom hálón az analitikus érték **60–100%-át** adja (a CST túl merev
-a hajláshoz — ismert jelenség, „shear locking" jellegű torzítás; a teszt ezt a sávot
-ellenőrzi). Forrás: `models/cantilever.ts → cantileverAnalyticalDeflection()`
+Azonos hálón mért eredmények (`tests/t6.test.ts`, `tests/fem.test.ts`):
 
-### 7.2 Lyukas lemez — feszültségkoncentráció
+| Elem | $\delta_{\max} / \delta_{\text{analitikus}}$ | Hiba |
+|---|---|---|
+| CST | 0,869 | 13,1% |
+| **T6** | **1,036** | **3,6%** |
+
+A CST túl merev a hajláshoz (ismert jelenség, „shear locking" jellegű torzítás);
+a T6 kvadratikus konvergenciája miatt 3,5×-szer pontosabb. A teszt a T6-ra
+küszöbövet tesz: $0{,}9 < \delta_{\text{FE}} / \delta_{\text{analitikus}} < 1{,}05$,
+a CST-re pedig a hiba csökkenését ellenőrzi (`errT6 < errCST`).
+Forrás: `models/cantilever.ts → cantileverAnalyticalDeflection()`
+
+### 8.2 M/V diagramok — gerenda-képletek
+
+A hajlítási feszültség és a nyíróerő kapcsolata (a hajlítási hengerfej-modell):
+
+$$
+\sigma = \frac{M}{W} \quad\Longrightarrow\quad \Delta\sigma = \frac{\Delta M}{W},
+\qquad W = \frac{t\,H^2}{6}
+$$
+
+$$
+V = \frac{\mathrm{d}M}{\mathrm{d}x}
+$$
+
+Ezek a képletek a `tests/newmodels.test.ts` analitikus ellenőrzéseit adják
+(pl. egyszerűen tartott gerenda középi pontterheléssel: $M_{\max} = PL/4$ a középen,
+$V$ a középen $\pm P/2$-re vált; a $V$ számítása a zajos elemszintű $\tau$-integrál
+helyett a $\mathrm{d}M/\mathrm{d}x$ deriváltra állt át).
+Forrás: `viz/diagrams.ts`
+
+### 8.3 Lyukas lemez — feszültségkoncentráció
 
 Végtelen lemez körlyukkal, egyirányú húzással $\sigma_0$:
 
@@ -303,11 +565,17 @@ $$
 $$
 
 A véges, egységes rácsos modell a lépcsős lyukhatár sarkainál szinguláris pontokat
-tartalmaz, ezért a mért csúcs a szimulációban $3\sigma_0$ **felett** van (durva
-hálón ~$4\sigma_0$). A kerekített (poligon) lyukhatár és finomabb háló közelíti a $3\sigma_0$-t.
+tartalmaz, ezért a mért csúcs a szimulációban $3\sigma_0$ **felett** van: a mért
+$K_t$ a hálósűrűséggel **nő** (4,1 → 5,0), tehát a konvergencia itt nem-monoton.
+
+**Kísérlet és eredménye (2026-09-26, visszavonva):** a körre való projekció + a
+sarokcsúcsok CCW-javítása szilánk-elemeket (negatív terület) adott; a Laplace-simítás
+behagyása közben üres foltok maradtak a hálóban. A pontos $K_t \approx 3$ eléréséhez
+**valódi határkövető háló** (Delaunay-voronoi vagy advancing front) szükséges — ez
+nyitott feladat, a T6 elem önmagában nem oldja meg.
 Forrás: `models/plateWithHole.ts → plateWithHoleKt()`
 
-### 7.3 Szolver-egységek
+### 8.4 Szolver-egységek
 
 | Mennyiség | SI-mértékegység | Tipikus érték |
 |---|---|---|
@@ -319,18 +587,22 @@ Forrás: `models/plateWithHole.ts → plateWithHoleKt()`
 
 ---
 
-## 8. Elméleti korlátok, ismert hibák
+## 9. Elméleti korlátok, ismert hibák
 
 | Jelenség | Ok | Kezelés |
 |---|---|---|
-| A CST merev a hajlásnál | lineáris alakfüggvény → konstans alakváltozás | finom háló; később T6 (kvadratikus) elem |
-| Lépcsős lyukhatár csúcsa > 3σ₀ | szinguláris újramenet-sarkok | poligon-lyuk; nem hiba, hanem felbontási hatás |
-| Poisson-locking vastag testeknél | $\nu \to 0.5$-nél $\mathbf{D}$ szinguláris | $\nu < 0.45$ korlát a UI-ban |
-| Terhelés egyetlen csomóponton | szinguláris feszültségmező | oktatási céllal elfogadható; később elosztott terhelés (egyenértékű csomóponti erők) |
+| A CST merev a hajlásnál | lineáris alakfüggvény → konstans alakváltozás | **Megoldva: T6 elem** (4. fejezet) — 13,1% → 3,6%; az alkalmazás váltója azonos geometrián összeveti a kettőt |
+| A T6-nál nincs „tiszta" elemi feszültség | a feszültség Gauss-pontonként változik | a hőtérkép súlyozott átlagot használ (4.7), a 3D nézet csúcs-színezést |
+| Lépcsős lyukhatár csúcsa > 3σ₀, és a $K_t$ nő a sűrűséggel | szinguláris újramenet-sarkok a rácsos hálón | **nyitott:** határkövető háló (Delaunay / advancing front); a körre-projekciós kísérlet 2026-09-26-án meghiúsult |
+| Poisson-locking vastag testeknél | $\nu \to 0.5$-nél $\mathbf{D}$ szinguláris | az anyagkatalógus $\nu$ értékei 0,30–0,35 között vannak, tehát távol az elfajzástól; a UI nem kényszerít ki korlátot |
+| Terhelés egyetlen csomóponton | szinguláris feszültségmező | **részben megoldva:** van elosztott terhelés is (5.3), de az is csomóponti erőkre képez le |
+| Az elosztott terhelés csak vízszintes, $y$ irányú | a szakasz-szintű erő-megosztás megszorítása | vízszintes gerenda-modellekhez elegendő; általános peremterhelés nyitott |
+| Nincs 1D rúdelem a magban | a `fem/` modul csak 2D háromszögelemeket ismer | a rácsos híd CST-háló; külön rúdelem nyitott feladat |
+| A `docs/fem-spec.md` V1.0-ás állapota | a T6 a specifikáció után készült | **rendbetett** a V1.1-ben (4. fejezet) |
 
 ---
 
-## 9. Irodalom
+## 10. Irodalom
 
 - O. C. Zienkiewicz, R. L. Taylor: *The Finite Element Method for Solid and Structural Mechanics*, 7th ed., Butterworth-Heinemann, 2013.
 - K.-J. Bathe: *Finite Element Procedures*, Prentice Hall, 1996.

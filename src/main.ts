@@ -20,7 +20,7 @@ import { renderInspection } from './ui/mathpanel-view';
 import { inspectNode } from './ui/nodepanel';
 import { renderNodeInspection } from './ui/nodepanel-view';
 import { findElementAt, findNodeAt, screenToWorld } from './viz/picking';
-import { viridisCss } from './viz/colormap';
+import { stressGradientCss } from './viz/colormap';
 import { MVPanel } from './viz/diagrams';
 import { ControlsPanel, type ModelOption } from './ui/controls';
 import { APP_VERSION, BUILD_ID } from './version';
@@ -281,7 +281,7 @@ function updateMathPanel(): void {
     const n = lastMesh.elements.length;
     el.innerHTML = `
       <div class="mp-header">
-        <h2>${hu ? 'Elemvizsgálat' : 'Element inspection'} #${insp.elemId}</h2>
+        <h2>${hu ? 'Elemvizsgálat' : 'Element inspection'} #${insp.elemId} <span class="mp-tag">${insp.elementType}</span></h2>
         <div class="mp-nav">
           <button id="mp-prev" title="${hu ? 'Előző elem' : 'Previous element'}">◀</button>
           <span class="mp-count">${insp.elemId + 1} / ${n}</span>
@@ -504,10 +504,7 @@ function formatPa(v: number): string {
 
 function renderLegend(maxVm: number, defscale: number): void {
   const bar = document.querySelector<HTMLDivElement>('#legend-bar')!;
-  const stops = 10;
-  const colors: string[] = [];
-  for (let i = 0; i <= stops; i++) colors.push(viridisCss(i / stops));
-  bar.style.background = `linear-gradient(to right, ${colors.join(',')})`;
+  bar.style.background = stressGradientCss(64);
   // Értékes címkék: 0 és max feszültség, + deformáció-méretarány
   const lo = document.querySelector<HTMLSpanElement>('#legend-lo')!;
   const hi = document.querySelector<HTMLSpanElement>('#legend-hi')!;

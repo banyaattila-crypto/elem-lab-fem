@@ -36,7 +36,7 @@
   .canvas-wrap { position: relative; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
   .canvas-wrap svg { display: block; width: 100%; height: auto; }
   .legend { position: absolute; right: 10px; bottom: 10px; display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--text-dim); background: rgba(15,23,42,0.75); padding: 4px 8px; border-radius: 6px; }
-  .legend-bar { width: 120px; height: 10px; border-radius: 5px; background: linear-gradient(to right, #440154, #414487, #2a788e, #22a884, #7ad151, #fde725); }
+  .legend-bar { width: 120px; height: 10px; border-radius: 5px; background: linear-gradient(to right, #0a1830, #133f77, #1b69b8, #3094d3, #6ebce4, #c6e5f4); }
   .card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.9rem 1.1rem; }
   .card h2 { font-size: 1rem; color: var(--accent); margin-bottom: 0.4rem; }
   .card p { color: var(--text-dim); font-size: 0.9rem; }
@@ -90,19 +90,19 @@
 
   <main class="stage">
     <div class="canvas-wrap">
-      <!-- Mock: konzolgerenda feszültséghőtérképe (viridis) -->
+      <!-- Mock: konzolgerenda feszültséghőtérképe (egyárnyalatú kék) -->
       <svg viewBox="0 0 800 360" xmlns="http://www.w3.org/2000/svg">
         <rect width="800" height="360" fill="#0f172a"/>
         <!-- befogás -->
         <rect x="60" y="80" width="10" height="200" fill="#475569"/>
-        <!-- gerenda: bal (befogás) pirosas-sárga (magas VM), jobb (szabad vég) lila-kék (alacsony) -->
+        <!-- gerenda: bal (befogás) világoskék (magas VM), jobb (szabad vég) sötétkék (alacsony) -->
         <g stroke="#0f172a" stroke-width="1" stroke-opacity="0.35">
-          <rect x="70"  y="80" width="90" height="200" fill="#fde725"/>
-          <rect x="160" y="80" width="90" height="200" fill="#7ad151"/>
-          <rect x="250" y="80" width="90" height="200" fill="#22a884"/>
-          <rect x="340" y="80" width="90" height="200" fill="#2a788e"/>
-          <rect x="430" y="80" width="90" height="200" fill="#414487"/>
-          <rect x="520" y="80" width="90" height="200" fill="#5c4a92"/>
+          <rect x="70"  y="80" width="90" height="200" fill="#c6e5f4"/>
+          <rect x="160" y="80" width="90" height="200" fill="#6ebce4"/>
+          <rect x="250" y="80" width="90" height="200" fill="#3094d3"/>
+          <rect x="340" y="80" width="90" height="200" fill="#1b69b8"/>
+          <rect x="430" y="80" width="90" height="200" fill="#133f77"/>
+          <rect x="520" y="80" width="90" height="200" fill="#0a1830"/>
           <rect x="610" y="80" width="90" height="200" fill="#6f4f9e"/>
           <rect x="700" y="80" width="40" height="200" fill="#7e5fa8"/>
           <!-- hálóvonalak -->
