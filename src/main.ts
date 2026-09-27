@@ -9,6 +9,9 @@ import { buildTrussBridge } from './models/trussBridge';
 import { buildPlateWithHole } from './models/plateWithHole';
 import { solve } from './fem/solve';
 import { Renderer } from './viz/renderer';
+import { inspectElement } from './ui/mathpanel';
+import { renderInspection } from './ui/mathpanel-view';
+import { findElementAt, screenToWorld } from './viz/picking';
 import { viridisCss } from './viz/colormap';
 import { ControlsPanel, type ModelOption } from './ui/controls';
 import { lessonFor } from './ui/lessons';
@@ -36,7 +39,12 @@ const state = {
   density: 3,
   material: 'steel' as MaterialKey,
   defscale: 500,
+  selectedElem: null as number | null,
 };
+
+/** Az utolsó megoldás — kattintáskor újraszámolás nélkül újrarajzolunk */
+let lastMesh: Mesh | null = null;
+let lastSol: SolutionResult | null = null;
 
 // ————— UI váz —————
 
@@ -61,6 +69,7 @@ app.innerHTML = `
       </div>
       <section class="lesson-card" id="lesson-card"></section>
       <section class="results" id="results"></section>
+      <section class="mathpanel" id="mathpanel"></section>
     </main>
   </div>
   <footer>
@@ -70,6 +79,71 @@ app.innerHTML = `
 
 const canvas = document.querySelector<HTMLCanvasElement>('#canvas')!;
 const renderer = new Renderer(canvas);
+
+// ————— Elemkiválasztás + matematikai panel —————
+
+canvas.addEventListener('click', (ev) => {
+  const view = renderer.lastView;
+  if (!view || !lastMesh) return;
+  const rect = canvas.getBoundingClientRect();
+  const world = screenToWorld(ev.clientX - rect.left, ev.clientY - rect.top, view, view.minY);
+  state.selectedElem = findElementAt(lastMesh, world.x, world.y);
+  updateMathPanel();
+  redraw();
+});
+
+function redraw(): void {
+  if (!lastMesh || !lastSol) return;
+  renderer.render(lastMesh, lastSol, {
+    deformationScale: state.defscale,
+    stressMax: lastSol.maxVonMises || 1,
+    showMeshEdges: true,
+    highlight: state.selectedElem,
+  });
+}
+
+function updateMathPanel(): void {
+  const el = document.querySelector<HTMLDivElement>('#mathpanel')!;
+  const hu = getLang() === 'hu';
+  if (state.selectedElem == null || !lastMesh || !lastSol) {
+    el.innerHTML = `<div class="mp-empty">${hu ? '👆 Kattints egy elemre a canvason — a teljes matematikai levezetés élő adatokkal jelenik meg.' : '👆 Click an element on the canvas — the full derivation appears with live data.'}</div>`;
+    return;
+  }
+  try {
+    const insp = inspectElement(lastMesh, lastSol, state.selectedElem);
+    const n = lastMesh.elements.length;
+    el.innerHTML = `
+      <div class="mp-header">
+        <h2>${hu ? 'Elemvizsgálat' : 'Element inspection'} #${insp.elemId}</h2>
+        <div class="mp-nav">
+          <button id="mp-prev" title="${hu ? 'Előző elem' : 'Previous element'}">◀</button>
+          <span class="mp-count">${insp.elemId + 1} / ${n}</span>
+          <button id="mp-next" title="${hu ? 'Következő elem' : 'Next element'}">▶</button>
+          <button id="mp-close" title="${hu ? 'Bezárás' : 'Close'}">✕</button>
+        </div>
+      </div>
+      ${renderInspection(insp, getLang())}
+    `;
+    document.querySelector<HTMLButtonElement>('#mp-prev')!.addEventListener('click', () => {
+      state.selectedElem = ((state.selectedElem ?? 0) - 1 + n) % n;
+      updateMathPanel();
+      redraw();
+    });
+    document.querySelector<HTMLButtonElement>('#mp-next')!.addEventListener('click', () => {
+      state.selectedElem = ((state.selectedElem ?? 0) + 1) % n;
+      updateMathPanel();
+      redraw();
+    });
+    document.querySelector<HTMLButtonElement>('#mp-close')!.addEventListener('click', () => {
+      state.selectedElem = null;
+      updateMathPanel();
+      redraw();
+    });
+  } catch {
+    state.selectedElem = null;
+    el.innerHTML = `<div class="mp-empty">${hu ? 'Válassz elemet!' : 'Select an element!'}</div>`;
+  }
+}
 
 function resizeCanvas(): void {
   const wrap = canvas.parentElement!;
@@ -136,13 +210,16 @@ function rebuildAndSolve(): void {
   resizeCanvas();
   const mesh = currentMesh();
   const sol = solve(mesh);
-  renderer.render(mesh, sol, {
-    deformationScale: state.defscale,
-    stressMax: sol.maxVonMises || 1,
-    showMeshEdges: true,
-  });
+  lastMesh = mesh;
+  lastSol = sol;
+  // Ha a modell változott, a kijelölés érvénytelenné válhat
+  if (state.selectedElem != null && !mesh.elements.some((e) => e.id === state.selectedElem)) {
+    state.selectedElem = null;
+  }
+  redraw();
   updateResults(sol, getLang());
   updateLesson(state.modelId, getLang());
+  updateMathPanel();
 }
 
 // ————— Eredmény- és leckepanel —————

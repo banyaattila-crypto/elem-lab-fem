@@ -5,6 +5,7 @@
 
 import type { Mesh, SolutionResult } from '../fem/types';
 import { viridis } from './colormap';
+import type { ViewTransform } from './picking';
 
 export interface RenderOptions {
   /** Deformáció-nagyítás tényező (1 = valódi) */
@@ -13,6 +14,8 @@ export interface RenderOptions {
   stressMax: number;
   /** Rács (elemhatárok) megjelenítése */
   showMeshEdges: boolean;
+  /** Kiemelendő elem id-ja (vagy null) */
+  highlight?: number | null;
 }
 
 export const DEFAULT_RENDER_OPTIONS: RenderOptions = {
@@ -24,6 +27,8 @@ export const DEFAULT_RENDER_OPTIONS: RenderOptions = {
 export class Renderer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
+  /** Az utolsó render világ→képernyő transzformációja (picking-hez) */
+  lastView: (ViewTransform & { minY: number }) | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -65,6 +70,7 @@ export class Renderer {
       (width - 2 * pad) / Math.max(b.w, 1e-9),
       (height - 2 * pad) / Math.max(b.h, 1e-9),
     );
+    this.lastView = { pad, scale, minX: b.minX, minY: b.minY, canvasHeight: height };
 
     // világ → képernyő transzformáció (deformált koordinátákkal)
     const tx = (x: number, y: number, id: number) => {
@@ -102,6 +108,35 @@ export class Renderer {
         ctx.strokeStyle = 'rgba(15,23,42,0.35)';
         ctx.lineWidth = 0.5;
         ctx.stroke();
+      }
+    }
+
+    // Kiválasztott elem kiemelése
+    if (opts.highlight != null) {
+      const elem = mesh.elements.find((e) => e.id === opts.highlight);
+      if (elem) {
+        const [i1, i2, i3] = elem.nodes;
+        const p1 = mesh.nodes[i1]!;
+        const p2 = mesh.nodes[i2]!;
+        const p3 = mesh.nodes[i3]!;
+        const s1 = tx(p1.x, p1.y, p1.id);
+        const s2 = tx(p2.x, p2.y, p2.id);
+        const s3 = tx(p3.x, p3.y, p3.id);
+        ctx.beginPath();
+        ctx.moveTo(s1.sx, s1.sy);
+        ctx.lineTo(s2.sx, s2.sy);
+        ctx.lineTo(s3.sx, s3.sy);
+        ctx.closePath();
+        ctx.strokeStyle = '#f87171';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        // csomópontok
+        ctx.fillStyle = '#fbbf24';
+        for (const s of [s1, s2, s3]) {
+          ctx.beginPath();
+          ctx.arc(s.sx, s.sy, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     }
   }
