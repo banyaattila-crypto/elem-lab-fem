@@ -98,7 +98,7 @@ export class WebGLRenderer {
   /** Téma átvezetése a jelenet háttérszínére és a háttérrácsra */
   private applyTheme(): void {
     const dark = isDarkTheme();
-    this.scene.background = new THREE.Color(dark ? '#0b1424' : '#f4f7fb');
+    this.scene.background = new THREE.Color(dark ? '#0b1424' : '#e8eefc');
     const g = this.gridHelper.material as THREE.LineBasicMaterial;
     g.color.setHex(dark ? 0x55688f : 0x9fb3d1);
     g.opacity = dark ? 0.5 : 0.35;

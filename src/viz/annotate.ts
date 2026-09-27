@@ -83,8 +83,8 @@ export function drawDimensionLines(
   lines: DimLine[],
 ): void {
   ctx.save();
-  ctx.strokeStyle = isDarkTheme() ? 'rgba(160, 178, 200, 0.85)' : 'rgba(71, 85, 105, 0.85)';
-  ctx.fillStyle = isDarkTheme() ? 'rgba(203, 213, 225, 0.95)' : 'rgba(51, 65, 85, 0.95)';
+  ctx.strokeStyle = isDarkTheme() ? 'rgba(160, 178, 200, 0.85)' : 'rgba(56, 86, 145, 0.85)';
+  ctx.fillStyle = isDarkTheme() ? 'rgba(203, 213, 225, 0.95)' : 'rgba(38, 62, 112, 0.95)';
   ctx.lineWidth = 1;
   ctx.font = '11px system-ui, sans-serif';
   ctx.textAlign = 'center';
@@ -154,8 +154,8 @@ export function drawSupports(
   const supports = mesh.annotation?.supports ?? [];
   if (supports.length === 0) return;
   ctx.save();
-  ctx.strokeStyle = isDarkTheme() ? 'rgba(226, 232, 240, 0.95)' : 'rgba(51, 65, 85, 0.95)';
-  ctx.fillStyle = isDarkTheme() ? 'rgba(148, 163, 184, 0.9)' : 'rgba(100, 116, 139, 0.9)';
+  ctx.strokeStyle = isDarkTheme() ? 'rgba(226, 232, 240, 0.95)' : 'rgba(38, 62, 112, 0.95)';
+  ctx.fillStyle = isDarkTheme() ? 'rgba(148, 163, 184, 0.9)' : 'rgba(97, 115, 152, 0.92)';
   ctx.lineWidth = 1.5;
 
   const S = 14; // szimbólum mérete [px]
@@ -397,11 +397,11 @@ export function drawInfoPanel(
   const boxH = lines.length * lineH + 2 * pad - 3;
 
   const dark = isDarkTheme();
-  ctx.fillStyle = dark ? 'rgba(13, 20, 36, 0.82)' : 'rgba(255, 255, 255, 0.9)';
+  ctx.fillStyle = dark ? 'rgba(13, 20, 36, 0.82)' : 'rgba(255, 255, 255, 0.88)';
   ctx.beginPath();
   roundRectPath(ctx, 10, 10, boxW, boxH, 8);
   ctx.fill();
-  ctx.strokeStyle = dark ? 'rgba(148, 163, 184, 0.3)' : 'rgba(100, 116, 139, 0.5)';
+  ctx.strokeStyle = dark ? 'rgba(148, 163, 184, 0.3)' : 'rgba(84, 109, 168, 0.55)';
   ctx.lineWidth = 1;
   ctx.stroke();
 

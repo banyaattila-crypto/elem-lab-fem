@@ -219,7 +219,7 @@ export class MVPanel {
     ctx.clearRect(0, 0, cssW, cssH);
 
     const dark = isDarkTheme();
-    ctx.fillStyle = dark ? 'rgba(10, 18, 34, 0.55)' : 'rgba(248, 250, 252, 0.9)';
+    ctx.fillStyle = dark ? 'rgba(10, 18, 34, 0.55)' : 'rgba(235, 243, 255, 0.85)';
     ctx.fillRect(0, 0, cssW, cssH);
 
     if (this.samples.length < 2) {

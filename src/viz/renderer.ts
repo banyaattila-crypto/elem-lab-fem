@@ -90,7 +90,7 @@ export class Renderer {
     c.width = 26;
     c.height = 26;
     const g = c.getContext('2d')!;
-    g.fillStyle = dark ? 'rgba(148, 180, 220, 0.3)' : 'rgba(71, 96, 150, 0.4)';
+    g.fillStyle = dark ? 'rgba(148, 180, 220, 0.3)' : 'rgba(58, 84, 140, 0.5)';
     g.beginPath();
     g.arc(13, 13, 1.05, 0, Math.PI * 2);
     g.fill();
@@ -101,13 +101,14 @@ export class Renderer {
   private paintBackdrop(width: number, height: number): void {
     const ctx = this.ctx;
     const dark = isDarkTheme();
-    const grad = ctx.createLinearGradient(0, 0, 0, height);
+    const grad = ctx.createLinearGradient(0, 0, width, height);
     if (dark) {
       grad.addColorStop(0, '#0e1830');
       grad.addColorStop(1, '#0a1120');
     } else {
-      grad.addColorStop(0, '#fafdff');
-      grad.addColorStop(1, '#ecf2fa');
+      grad.addColorStop(0, '#eef3ff');
+      grad.addColorStop(0.55, '#e9edfd');
+      grad.addColorStop(1, '#f2ecff');
     }
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
@@ -117,7 +118,7 @@ export class Renderer {
       this.patternDark = dark;
     }
     ctx.save();
-    ctx.globalAlpha = dark ? 0.4 : 0.55;
+    ctx.globalAlpha = dark ? 0.4 : 0.6;
     ctx.fillStyle = this.dotPattern;
     ctx.fillRect(0, 0, width, height);
     ctx.restore();
@@ -131,9 +132,9 @@ export class Renderer {
       glow.addColorStop(0.55, 'rgba(90, 140, 255, 0.05)');
       glow.addColorStop(1, 'rgba(90, 140, 255, 0)');
     } else {
-      glow.addColorStop(0, 'rgba(37, 99, 235, 0.12)');
-      glow.addColorStop(0.55, 'rgba(37, 99, 235, 0.035)');
-      glow.addColorStop(1, 'rgba(37, 99, 235, 0)');
+      glow.addColorStop(0, 'rgba(59, 130, 246, 0.16)');
+      glow.addColorStop(0.55, 'rgba(168, 85, 247, 0.05)');
+      glow.addColorStop(1, 'rgba(168, 85, 247, 0)');
     }
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, width, height);
@@ -224,13 +225,13 @@ export class Renderer {
       ctx.fillStyle = stressCss(t);
       ctx.fill();
 
-      if (opts.showMeshEdges) {
-        ctx.strokeStyle = isDarkTheme() ? 'rgba(203, 213, 225, 0.16)' : 'rgba(51, 65, 85, 0.4)';
+if (opts.showMeshEdges) {
+        ctx.strokeStyle = isDarkTheme() ? 'rgba(203, 213, 225, 0.16)' : 'rgba(47, 71, 118, 0.5)';
         ctx.lineWidth = 0.5;
         ctx.stroke();
         // T6: az oldalközép-csomópontokat is bemutatjuk (rácsellenőrzés)
         if ((mesh.elementType ?? 'CST') === 'T6' && elem.nodes.length >= 6) {
-          ctx.fillStyle = isDarkTheme() ? 'rgba(226, 232, 240, 0.55)' : 'rgba(51, 65, 85, 0.55)';
+          ctx.fillStyle = isDarkTheme() ? 'rgba(226, 232, 240, 0.55)' : 'rgba(47, 71, 118, 0.6)';
           for (let m = 3; m < Math.min(6, elem.nodes.length); m++) {
             const pm = mesh.nodes[elem.nodes[m]!]!;
             const sm = tx(pm.x, pm.y, pm.id);
