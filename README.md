@@ -18,7 +18,7 @@ A láblécben mindig látod, melyik verziót és buildet nézed (`v0.5.0 · buil
   CSR ritka mátrix, Jacobi-előkondicionált **Conjugate Gradient** szolver
 - 📐 **CST elem** (konstans feszültségű háromszög) és **T6 kvadratikus elem**
   (izoparaméteres, 3 pontos Gauss-kvadratúrával)
-- 🏗️ **8 kész modell** — gerendák, keret, tartó, rácsos híd, lemezek (lásd lent)
+- 🏗️ **7 kész modell** — gerendák, keret, tartó, rácsos híd, lemez (lásd lent)
 - 🎨 **Viridis hőtérkép** (színvakság-barát) + deformált alak — Canvas 2D **és**
   WebGL (Three.js, csúcs-színes folytonos mező, forgatás/zoom/pan)
 - 📏 **Rajz-annotációk**: méretvonalak (hossz, magasság, lyuk-Ø),
@@ -47,14 +47,13 @@ A láblécben mindig látod, melyik verziót és buildet nézed (`v0.5.0 · buil
 | **Konzolos tartó** | falba befogott L-alak | hajlítás + nyírás kombinációja |
 | **Rácsos híd (Warren)** | 2 támasz | öv-húzás/nyomás, átlós nyírás |
 | **Lyukas lemez** | húzás σ₀ | feszültségkoncentráció, Kt ≈ 3 |
-| **Kétlyukú lemez** | húzás σ₀ | nettó keresztmetszet, lyukak közötti csúcs |
 
 ## Gyorsindítás
 
 ```bash
 npm install
 npm run dev        # fejlesztői szerver
-npm test           # 52 validációs teszt
+npm test           # 51 validációs teszt
 npm run typecheck  # TypeScript ellenőrzés
 npm run build      # produkciós build + service worker
 ```
@@ -74,13 +73,14 @@ Röviden:
 
 ## Validáció
 
-A szolvert ismert analitikus megoldásokkal ellenőrizzük (Vitest, **52 teszt**):
+A szolvert ismert analitikus megoldásokkal ellenőrizzük (Vitest, **51 teszt**):
 
 | Teszt | Referencia | Ellenőrzés |
 |---|---|---|
 | Konzolgerenda hajlása | $\delta = \frac{PL^3}{3EI}$ | FEM/analitikus ∈ (0.6, 1.05) |
 | Egyszerűen tartott gerenda | $\delta = \frac{5qL^4}{384EI}$ / $\frac{PL^3}{48EI}$ | ±30% sáv (CST) |
 | Kétvégén befogott gerenda | $\delta = \frac{PL^3}{384EI}$ + 5× arány | ±30% sáv |
+| M/V diagramok | V = dM/dx, M-profil q vagy P szerint | ±35% sáv (CST) |
 | Lyukas lemez csúcsfeszültség | $K_t \to 3\sigma_0$ | plauzibilitási sáv |
 | Reakció-egyensúly minden modellen | ΣR = −P | numerikus nulla |
 | Görgő-támasz | csak adott DOF rögzít | Rₓ = 0 ellenőrzés |

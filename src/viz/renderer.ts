@@ -11,6 +11,7 @@ import {
   drawDimensionLines,
   drawInfoPanel,
   drawSupports,
+  drawReactionValues,
   drawLoadArrows,
   drawDistributedLoads,
 } from './annotate';
@@ -248,6 +249,7 @@ export class Renderer {
       const dims = computeDimensionLines(mesh, worldToScreen, v.scale);
       drawDimensionLines(ctx, dims);
       drawSupports(ctx, mesh, worldToScreen);
+      drawReactionValues(ctx, mesh, sol, worldToScreen);
       drawLoadArrows(ctx, mesh, worldToScreen);
       drawDistributedLoads(ctx, mesh, worldToScreen);
       drawInfoPanel(ctx, mesh, width);

@@ -39,19 +39,18 @@ The footer always shows which version and build you are looking at
 - 📈 **M/V diagrams**: bending-stress and shear-force profiles along the beam axis
 - 🖱️ **Zoom/pan** in the 2D view (wheel = zoom at cursor, drag = pan,
   double-click = reset), plus a WebGL (Three.js) 3D view with orbit controls
-- 🏗️ **Eight models**: cantilever, simply supported beam, fixed–fixed beam,
-  portal frame, corbel bracket, Warren truss bridge, plate with a hole,
-  plate with two holes
+- 🏗️ **Seven models**: cantilever, simply supported beam, fixed–fixed beam,
+  portal frame, corbel bracket, Warren truss bridge, plate with a hole
 - 🎨 Colorblind-friendly **viridis** heatmap + deformed shape (Canvas 2D + WebGL)
 - 📚 **Lesson cards** per model · 🌐 Hungarian / English · 📱 installable **PWA**
-- ✅ **52/52 validation tests** against analytic solutions (Vitest)
+- ✅ **51/51 validation tests** against analytic solutions (Vitest)
 
 ## Quick start
 
 ```bash
 npm install
 npm run dev        # dev server
-npm test           # 52 validation tests
+npm test           # 51 validation tests
 npm run typecheck  # TypeScript checks
 npm run build      # production build + service worker
 ```
@@ -65,6 +64,7 @@ The solver is checked against closed-form results:
 | Cantilever tip deflection | δ = PL³ / 3EI | FEM/analytic ∈ (0.6, 1.05) |
 | Simply supported beam | δ = 5qL⁴/384EI · PL³/48EI | ±30% band (CST) |
 | Fixed–fixed beam | δ = PL³/384EI + 5× ratio | ±30% band |
+| M/V diagrams | V = dM/dx, M-profile per q or P | ±35% band (CST) |
 | Plate-with-hole peak stress | Kt → 3σ₀ | plausibility band |
 | Global force equilibrium | ΣR = −P | exact to 1e-6 N |
 | Roller support | restrains only its DOF | Rₓ = 0 check |

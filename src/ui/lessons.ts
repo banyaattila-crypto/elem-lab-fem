@@ -50,16 +50,6 @@ export const LESSONS: Record<string, Lesson> = {
       en: 'At the frame corners the beam moment flows into the columns — this keeps the structure stable without extra supports. Watch the heatmap: the highest stress appears right at the corners and mid-span!',
     },
   },
-  plateTwoHoles: {
-    title: {
-      hu: 'Két lyuk: a nettó keresztmetszet szabálya',
-      en: 'Two holes: the net-section rule',
-    },
-    body: {
-      hu: 'A lyukak sávjában csak a nettó keresztmetszet viszi a terhelést: σ_nettó = σ₀·W/(W−d). A két lyuk között a feszültség még tovább koncentrálódik — ezért szakadnak itt a kötések! Változtasd az anyagot és a terhelést, és hasonlítsd össze az egylyukú lemezzel.',
-      en: 'In the hole row only the net section carries load: σ_net = σ₀·W/(W−d). Stress concentrates even more between the holes — that is where bolted joints crack! Change material and load, then compare with the single-hole plate.',
-    },
-  },
   cantilever: {
     title: {
       hu: 'Miért hajlik? Miért ott a legnagyobb feszültség?',

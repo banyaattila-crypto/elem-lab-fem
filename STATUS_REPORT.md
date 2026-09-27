@@ -1,7 +1,7 @@
 # ElemLab — Státuszjelentés
 
 > **Projekt:** Interaktív, oktatási célú végeselem-módszer (FEM) játszótér — web-first PWA
-> **Utolsó frissítés:** 2026-09-27 · **v0.5.0** (verzió + build-ID a látható láblécben)
+> **Utolsó frissítés:** 2026-09-27 · **v0.6.0** (verzió + build-ID a látható láblécben)
 > **Státusz:** 🟢 Élő: 8 modell, támasz/terhelés-séma annotáció, elosztott terhelés, MathPanel + NodePanel, **52/52 teszt**, build OK, **Vercel deploy élő** (elem-lab-fem.vercel.app)
 
 ---
@@ -199,3 +199,4 @@ A teljes, képletekkel ellátott specifikáció: **[docs/fem-spec.md](docs/fem-s
 | 2026-09-27 | **v0.3.0 — Rajz-annotáció + új modellek**: méretvonalak (hossz, magasság, lyuk-Ø) nyilakkal; infópanel (modell, anyag, E, ν, keresztmetszet); görgő-támasz a FEM-magban (rollerX/rollerY); 3 új modell: egyszerűen tartott gerenda (csukló + görgő), portálkeret (csomópont-összeillesztett szalagháló), kétlyukú lemez; 10 új fizikai teszt (45/45) |
 | 2026-09-27 | **v0.4.0 — Támasz-szimbólumok, terhelés-sémák, elosztott terhelés**: befogás/csukló/görgő ikonok a valós geometrián; pontterhelés-nyíl értékkel + elosztott terhelés sorozat-nyilakkal (q = … N/m) a canvason; **elosztott terhelés a FEM-magban** (bc.distributed, N/m szakaszok); statikai séma sor az infópanelen; 2 új modell: kétvégén befogott gerenda (5× hajlás-arány validálva) + konzolos tartó (L-alak, falba befogva); 8 modell összesen; leckék minden új modellhez; **52/52 teszt** |
 | 2026-09-27 | **v0.5.0 — Terhelés-váltó + M/V diagramok**: pontterhelés ⇄ elosztott váltó a vezérlőpanelen (gerenda-modelleknél; a konzolgerenda pont-, az egyszerűen tartott elosztott alapbeállítással indul; az analitikus képletek típusfüggően váltanak); hajlítási feszültség- és nyíróerő-profil (M/V) a canvas alatti sávban a gerenda-modelleknél; README.hu + README.en teljes frissítése (8 modell, T6/WebGL, 52 teszt, demó-link) |
+| 2026-09-27 | **v0.6.0 — Reakció-értékek a sémában + M/V analitikus validáció + kétlyukú lemez eltávolítva**: támasz-szimbólumok mellett zöld R = … kN/N feliratok (a legközelebbi csomópont reakcióiból); M/V tesztek analitikus gerenda-összefüggésekre (Δσ = M/W és V = dM/dx; egyszerű tartás: M-csúcs középen + V(L/4), konzol: M = P·(L−x) + V állandó); a V-kiszámítás átállt a zajos elemszintű τ-integrálról a dM/dx deriváltra; kétlyukú lemez modell + lecke + tesztek kivéve (7 modell); **51/51 teszt** |

@@ -9,11 +9,11 @@
 import { describe, expect, it } from 'vitest';
 import { buildSimplySupported, simplySupportedAnalyticalDeflection } from '../src/models/simplySupported';
 import { buildPortalFrame } from '../src/models/portalFrame';
-import { buildPlateTwoHoles } from '../src/models/plateTwoHoles';
 import { buildFixedFixed, fixedFixedAnalyticalDeflection } from '../src/models/fixedFixed';
 import { buildCorbel } from '../src/models/corbel';
 import { buildCantilever } from '../src/models/cantilever';
 import { solve } from '../src/fem/solve';
+import { sampleDiagrams } from '../src/viz/diagrams';
 
 describe('Egyszerűen tartott gerenda', () => {
   it('hajlás közelíti az elosztott terheléses analitikus δ = 5PL³/(384·E·I) értéket', () => {
@@ -78,28 +78,71 @@ describe('Portálkeret', () => {
   });
 });
 
-describe('Kétlyukú lemez', () => {
-  it('megoldható és a max feszültség nagyobb, mint a névleges σ₀', () => {
-    const sigma0 = 1e6;
-    const mesh = buildPlateTwoHoles({ sigma0, density: 2 });
+describe('M/V diagramok — analitikus validáció', () => {
+  it('egyszerűen tartott + elosztott: Δσ-csúcs középen, V lineárisan csökken', () => {
+    const P = 2000; // q·L = P
+    const L = 4;
+    const mesh = buildSimplySupported({ L, H: 0.4, thickness: 0.02, loadN: P, density: 4, loadType: 'distributed' });
     const sol = solve(mesh);
-    expect(sol.maxVonMises).toBeGreaterThan(sigma0);
+    const samples = sampleDiagrams(mesh, sol);
+    expect(samples.length).toBeGreaterThan(3);
+
+    const q = P / L;
+    const midX = L / 2;
+    const near = samples.reduce((best, s) => (Math.abs(s.x - midX) < Math.abs(best.x - midX) ? s : best));
+    const far = samples.reduce((best, s) => (Math.abs(s.x - 0.05) < Math.abs(best.x - 0.05) ? s : best));
+
+    // (1) a hajlítási csúcs a közép közelében van, nem a tartónál
+    expect(Math.abs(near.sigmaTop)).toBeGreaterThan(Math.abs(far.sigmaTop) * 3);
+
+    // (2) abszolút skála: Δσ_mid = M_mid/W, W = t·H²/6 — CST-on ±35% sáv
+    const W = 0.02 * 0.4 * 0.4 / 6;
+    const expected = (q * L * L / 8) / W;
+    expect(Math.abs(near.sigmaTop)).toBeGreaterThan(expected * 0.65);
+    expect(Math.abs(near.sigmaTop)).toBeLessThan(expected * 1.35);
+
+    // (3) V = dM/dx: az L/4 helyen V(x) = q·(L/2 − x) analitikus (±35% sáv), középen ≈ 0
+    const expectedV = (q * L) / 2;
+    const quarter = samples.reduce((best, s) => (Math.abs(s.x - L / 4) < Math.abs(best.x - L / 4) ? s : best));
+    const analyticVq = q * (L / 2 - L / 4);
+    expect(Math.abs(quarter.shear)).toBeGreaterThan(analyticVq * 0.65);
+    expect(Math.abs(quarter.shear)).toBeLessThan(analyticVq * 1.35);
+    // monotonitás: |V| a tartó felé nő, középen ~0
+    expect(Math.abs(quarter.shear)).toBeGreaterThan(expectedV * 0.2);
+    expect(Math.abs(midV(samples, midX).shear)).toBeLessThan(expectedV * 0.4);
   });
 
-  it('húzóegyensúly: ΣFx reakciók kiegyenlítik a terhelést', () => {
-    const mesh = buildPlateTwoHoles({ sigma0: 2e6, density: 2 });
+  it('konzolgerenda + végponti terhelés: M a befogásnál max, a szabad végen ~0; V állandó', () => {
+    const P = 1500;
+    const L = 2;
+    const mesh = buildCantilever({ L, H: 0.4, thickness: 0.02, loadN: P, density: 4, loadType: 'point' });
     const sol = solve(mesh);
-    let sumX = 0;
-    for (const r of sol.reactions.values()) sumX += r.x;
-    // A rögzítés csak egy sarok: a maradék egyensúlyt a többszörös
-    // csomóponti terhelés adja — a reakció-eloszlás ellenőrzése:
-    expect(Number.isFinite(sumX)).toBe(true);
+    const samples = sampleDiagrams(mesh, sol);
+    expect(samples.length).toBeGreaterThan(3);
+
+    const W = 0.02 * 0.4 * 0.4 / 6;
+    // Δσ(x) = M(x)/W = P·(L−x)/W a befogás felé nő
+    const atFix = samples.filter((s) => s.x < 0.25);
+    const atFree = samples.filter((s) => s.x > L - 0.35);
+    const maxFix = Math.max(...atFix.map((s) => Math.abs(s.sigmaTop)));
+    const maxFree = Math.max(...atFree.map((s) => Math.abs(s.sigmaTop)));
+    expect(maxFix).toBeGreaterThan(maxFree * 4);
+
+    // abszolút skála a befogásnál: P·L/W ±35%
+    const expected = (P * L) / W;
+    expect(maxFix).toBeGreaterThan(expected * 0.65);
+    expect(maxFix).toBeLessThan(expected * 1.35);
+
+    // V állandó = P (dM/dx): a belső x-tartomány mediánja stabil sávban
+    const inner = samples.filter((s) => s.x > 0.2 && s.x < L - 0.2).map((s) => Math.abs(s.shear)).sort((a, b) => a - b);
+    const vMed = inner[Math.floor(inner.length / 2)]!;
+    expect(vMed).toBeGreaterThan(P * 0.6);
+    expect(vMed).toBeLessThan(P * 1.4);
   });
 
-  it('annotációban két lyuk szerepel', () => {
-    const mesh = buildPlateTwoHoles({});
-    expect(mesh.annotation?.holes).toHaveLength(2);
-  });
+  function midV(samples: ReturnType<typeof sampleDiagrams>, midX: number) {
+    return samples.reduce((best, s) => (Math.abs(s.x - midX) < Math.abs(best.x - midX) ? s : best));
+  }
 });
 
 describe('Kétvégén befogott gerenda', () => {

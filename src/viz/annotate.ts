@@ -4,7 +4,7 @@
  * Tiszta függvények + rajzoló — a méretezés a renderer lastView-jából jön.
  */
 
-import type { Mesh, MeshAnnotation } from '../fem/types';
+import type { Mesh, MeshAnnotation, Node, SolutionResult } from '../fem/types';
 
 /** Egy méretvonal leírója képernyő-koordinátákban */
 interface DimLine {
@@ -323,6 +323,58 @@ export function drawDistributedLoads(
     ctx.fillText(label, (a.sx + b.sx) / 2, Math.min(a.sy, b.sy) - dirY * h - 4);
   }
   ctx.restore();
+}
+
+/**
+ * Támasz-reakció értékek kiírása a támasz-szimbólumok mellé:
+ * minden szimbólumhoz a legközelebbi csomópont reakcióerő-térerőssége (|R|).
+ * A befogott élek két sarka így a részerőket mutatja (összegük = teljes reakció).
+ */
+export function drawReactionValues(
+  ctx: CanvasRenderingContext2D,
+  mesh: Mesh,
+  sol: SolutionResult,
+  worldToScreen: (x: number, y: number) => { sx: number; sy: number },
+): void {
+  const supports = mesh.annotation?.supports ?? [];
+  if (supports.length === 0) return;
+  ctx.save();
+  ctx.font = '10px system-ui, sans-serif';
+  ctx.fillStyle = '#4ade80';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  for (const sup of supports) {
+    // legközelebbi csomópont a szimbólumhoz
+    let best: Node | null = null;
+    let bestDist = Infinity;
+    for (const n of mesh.nodes) {
+      const d = Math.hypot(n.x - sup.x, n.y - sup.y);
+      if (d < bestDist) {
+        bestDist = d;
+        best = n;
+      }
+    }
+    if (!best) continue;
+    const r = sol.reactions.get(best.id);
+    if (!r) continue;
+    const mag = Math.hypot(r.x, r.y);
+    if (mag < 1e-9) continue;
+
+    const { sx, sy } = worldToScreen(sup.x, sup.y);
+    const dir = sup.dir ?? 'down';
+    const ux = dir === 'left' ? -1 : dir === 'right' ? 1 : 0;
+    const uy = dir === 'up' ? -1 : dir === 'down' ? 1 : 0;
+    const tx = sx + ux * 44;
+    const ty = sy + uy * 44;
+    ctx.fillText(fmtReaction(mag), tx, ty);
+  }
+  ctx.restore();
+}
+
+/** Reakcióerő rövid formázó */
+function fmtReaction(n: number): string {
+  return Math.abs(n) >= 1000 ? `R = ${(n / 1000).toFixed(1)} kN` : `R = ${n.toFixed(0)} N`;
 }
 
 /** Infópanel kirajzolása a vászon bal felső sarkába */

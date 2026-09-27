@@ -9,7 +9,6 @@ import { buildTrussBridge } from './models/trussBridge';
 import { buildPlateWithHole } from './models/plateWithHole';
 import { buildSimplySupported } from './models/simplySupported';
 import { buildPortalFrame } from './models/portalFrame';
-import { buildPlateTwoHoles } from './models/plateTwoHoles';
 import { buildFixedFixed } from './models/fixedFixed';
 import { buildCorbel } from './models/corbel';
 import { convertToT6 } from './models/t6convert';
@@ -37,7 +36,6 @@ const MODEL_OPTIONS: ModelOption[] = [
   { id: 'corbel', label: 'Konzolos tartó' },
   { id: 'trussBridge', label: 'Rácsos híd' },
   { id: 'plateWithHole', label: 'Lyukas lemez' },
-  { id: 'plateTwoHoles', label: 'Kétlyukú lemez' },
 ];
 
 const MODEL_LABELS: Record<string, Record<Lang, string>> = {
@@ -48,7 +46,6 @@ const MODEL_LABELS: Record<string, Record<Lang, string>> = {
   corbel: { hu: 'Konzolos tartó', en: 'Corbel bracket' },
   trussBridge: { hu: 'Rácsos híd', en: 'Truss bridge' },
   plateWithHole: { hu: 'Lyukas lemez', en: 'Plate with hole' },
-  plateTwoHoles: { hu: 'Kétlyukú lemez', en: 'Plate with two holes' },
 };
 
 type ParamKey = 'load' | 'density' | 'material' | 'defscale';
@@ -398,8 +395,6 @@ function currentMesh(): Mesh {
       return buildTrussBridge(opts);
     case 'plateWithHole':
       return buildPlateWithHole(opts);
-    case 'plateTwoHoles':
-      return buildPlateTwoHoles(opts);
     default:
       return buildCantilever(opts);
   }
