@@ -5,7 +5,7 @@
 > Ez a dokumentum az `src/fem/` modul teljes matematikai alapját tartalmazza.
 > A képletek LaTeX-ben íródnak; a forráskód az azonos jelöléseket használja.
 >
-> **V1.1 változás:** bekerült a **4. fejezet: T6 kvadratikus elem** (2026-09-27, v0.7.0-ig),
+> **V1.1 változás:** bekerült a **4. fejezet: T6 kvadratikus elem** (2026-09-27, v0.8.0-ig),
 > továbbá a reakcióerők (7.2) és az elosztott terhelés (5.2) képlete. A 2–3. és 5–7.
 > fejezetek számozása eggyel előrébb tolódott.
 

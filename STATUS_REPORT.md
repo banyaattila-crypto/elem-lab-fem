@@ -1,7 +1,7 @@
 # ElemLab — Státuszjelentés
 
 > **Projekt:** Interaktív, oktatási célú végeselem-módszer (FEM) játszótér — web-first PWA
-> **Utolsó frissítés:** 2026-09-27 · **v0.7.0** (verzió + build-ID a látható láblécben)
+> **Utolsó frissítés:** 2026-09-27 · **v0.8.0** (verzió + build-ID a látható láblécben)
 > **Státusz:** 🟢 Élő: **7 modell**, **CST + T6 elem**, Canvas 2D + WebGL (Three.js) 3D nézet, támasz/terhelés-séma annotáció, elosztott terhelés, M/V panel kurzor-kiolvasással, MathPanel + NodePanel, HU/EN, PWA, **73/73 teszt**, build OK, **Vercel deploy élő** (elem-lab-fem.vercel.app)
 
 ---
