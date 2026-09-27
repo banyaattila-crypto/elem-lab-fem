@@ -73,12 +73,53 @@ export class Renderer {
   panX = 0;
   panY = 0;
   private lastMeshRef: Mesh | null = null;
+  private dotPattern: CanvasPattern | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas 2D context nem elérhető');
     this.ctx = ctx;
+  }
+
+  /** Pontrács-minta (mérnöki papír): egyszer létrehozva, sokszorosítva */
+  private makeDotPattern(): CanvasPattern {
+    const c = document.createElement('canvas');
+    c.width = 26;
+    c.height = 26;
+    const g = c.getContext('2d')!;
+    g.fillStyle = 'rgba(71, 96, 150, 0.4)';
+    g.beginPath();
+    g.arc(13, 13, 1.05, 0, Math.PI * 2);
+    g.fill();
+    return this.ctx.createPattern(c, 'repeat')!;
+  }
+
+  /** Színpadi háttér: lágy színátmenet + pontrács + középponti ragyogás */
+  private paintBackdrop(width: number, height: number): void {
+    const ctx = this.ctx;
+    const grad = ctx.createLinearGradient(0, 0, 0, height);
+    grad.addColorStop(0, '#fafdff');
+    grad.addColorStop(1, '#ecf2fa');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+
+    if (!this.dotPattern) this.dotPattern = this.makeDotPattern();
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.fillStyle = this.dotPattern;
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+
+    const gx = width / 2;
+    const gy = height / 2;
+    const R = Math.max(width, height) * 0.7;
+    const glow = ctx.createRadialGradient(gx, gy, 30, gx, gy, R);
+    glow.addColorStop(0, 'rgba(37, 99, 235, 0.12)');
+    glow.addColorStop(0.55, 'rgba(37, 99, 235, 0.035)');
+    glow.addColorStop(1, 'rgba(37, 99, 235, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, width, height);
   }
 
   /** A modell világkoordinátáinak befoglaló téglalapja */
@@ -104,9 +145,8 @@ export class Renderer {
     const ctx = this.ctx;
     const { width, height } = this.canvas;
 
-    // háttér (világos téma)
-    ctx.fillStyle = '#f4f7fb';
-    ctx.fillRect(0, 0, width, height);
+    // háttér (világos téma, színpadi)
+    this.paintBackdrop(width, height);
 
     const b = this.bounds(mesh);
     const pad = 40;

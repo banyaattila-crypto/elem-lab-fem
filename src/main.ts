@@ -77,6 +77,7 @@ let lastSol: SolutionResult | null = null;
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
+  <div class="aurora" aria-hidden="true"><i class="ab ab-1"></i><i class="ab ab-2"></i><i class="ab ab-3"></i></div>
   <header class="topbar">
     <div class="brand">
       <span class="brand-mark" aria-hidden="true">E</span>
@@ -113,6 +114,7 @@ app.innerHTML = `
         <canvas id="mv-canvas"></canvas>
       </div>
       <nav class="tabs" id="tabs" role="tablist" aria-label="Részletek">
+        <span class="tab-indicator" aria-hidden="true"></span>
         <button class="tab active" data-tab="lesson" role="tab" aria-selected="true">Lecke</button>
         <button class="tab" data-tab="results" role="tab" aria-selected="false">Eredmények</button>
         <button class="tab" data-tab="inspect" role="tab" aria-selected="false">Vizsgálat</button>
@@ -272,6 +274,17 @@ function setTab(name: TabName): void {
     const page = document.getElementById(`page-${id}`)!;
     page.classList.toggle('active', id === name);
   });
+  placeTabIndicator();
+}
+
+/** A csúszó füljelzőt az aktív fülre igazítja */
+function placeTabIndicator(): void {
+  const tabs = document.querySelector<HTMLElement>('#tabs');
+  const ind = tabs?.querySelector<HTMLElement>('.tab-indicator');
+  const active = tabs?.querySelector<HTMLButtonElement>('.tab.active');
+  if (!tabs || !ind || !active) return;
+  ind.style.width = `${active.offsetWidth}px`;
+  ind.style.transform = `translateX(${active.offsetLeft}px)`;
 }
 
 function initTabs(): void {
@@ -362,6 +375,7 @@ function resizeCanvas(): void {
 window.addEventListener('resize', () => {
   resizeCanvas();
   rebuildAndSolve();
+  placeTabIndicator();
 });
 
 function toggleMVPanel(): void {
@@ -652,6 +666,7 @@ function showFatalBanner(message: string): void {
 try {
   setLang('hu');
   initTabs();
+  placeTabIndicator();
   document.querySelector<HTMLButtonElement>('#mv-toggle')!.addEventListener('click', toggleMVPanel);
   controls.render(MODEL_OPTIONS, { modelId: state.modelId, loadType: state.loadType });
   document.querySelector<HTMLButtonElement>('#anim-btn')!.addEventListener('click', toggleAnimation);

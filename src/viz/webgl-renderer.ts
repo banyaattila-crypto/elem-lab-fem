@@ -23,6 +23,30 @@ export interface WebGLRenderOptions {
   phase?: number;
 }
 
+/** Háttérrács a modell mögött (xy-sík, z = −ε): mérnöki papír-hangulat */
+function makeBackgroundGrid(size: number, divisions: number): THREE.LineSegments {
+  const pts: number[] = [];
+  const half = size / 2;
+  const step = size / divisions;
+  for (let i = 0; i <= divisions; i++) {
+    const p = -half + i * step;
+    pts.push(p, -half, 0, p, half, 0);
+    pts.push(-half, p, 0, half, p, 0);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  const mat = new THREE.LineBasicMaterial({
+    color: 0x9fb3d1,
+    transparent: true,
+    opacity: 0.35,
+    depthWrite: false,
+  });
+  const seg = new THREE.LineSegments(geo, mat);
+  seg.position.z = -0.06;
+  seg.renderOrder = -1;
+  return seg;
+}
+
 export class WebGLRenderer {
   private renderer: THREE.WebGLRenderer;
   private scene: THREE.Scene;
@@ -30,6 +54,7 @@ export class WebGLRenderer {
   private controls: OrbitControls;
   private meshGroup: THREE.Group | null = null;
   private canvas: HTMLCanvasElement;
+  private gridHelper: THREE.LineSegments;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -40,6 +65,10 @@ export class WebGLRenderer {
     });
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color('#f4f7fb');
+
+    // Mérnöki háttérrács a modell síkjával párhuzamosan, kissé mögötte
+    this.gridHelper = makeBackgroundGrid(8, 24);
+    this.scene.add(this.gridHelper);
 
     const aspect = canvas.width / Math.max(canvas.height, 1);
     const viewSize = 1.2;

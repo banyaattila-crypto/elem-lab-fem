@@ -1,5 +1,5 @@
 /* ============================================================
-   ElemLab — vizuális újraépítés („oktatási stúdió" hangulat)
+   ElemLab — „Oktatási stúdió": auróra, üveg, finom mozgás
    ============================================================ */
 
 :root {
@@ -10,20 +10,27 @@
   --text-dim: #64748b;
   --accent: #2563eb;
   --accent-2: #4f46e5;
+  --accent-3: #7c3aed;
   --accent-soft: #e8effc;
   --border: #e3e8f0;
 
-  --grad-btn: linear-gradient(135deg, #2563eb, #4f46e5);
+  --grad-btn: linear-gradient(135deg, #2563eb 0%, #4f46e5 60%, #7c3aed 100%);
   --grad-brand: linear-gradient(135deg, #2563eb, #7c3aed);
-  --grad-text: linear-gradient(120deg, #2563eb, #7c3aed);
+  --grad-text: linear-gradient(115deg, #1d4ed8 0%, #7c3aed 100%);
 
-  --radius: 18px;
-  --radius-sm: 11px;
-  --radius-xs: 8px;
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
 
-  --shadow: 0 1px 2px rgba(30, 64, 175, 0.04), 0 14px 34px rgba(30, 64, 175, 0.1);
+  --radius: 20px;
+  --radius-sm: 12px;
+  --radius-xs: 9px;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-slow: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --shadow: 0 1px 2px rgba(30, 64, 175, 0.04), 0 14px 34px rgba(30, 64, 175, 0.09);
   --shadow-sm: 0 1px 2px rgba(30, 64, 175, 0.05);
-  --shadow-lg: 0 2px 4px rgba(30, 64, 175, 0.05), 0 24px 48px rgba(30, 64, 175, 0.12);
+  --shadow-lg: 0 2px 6px rgba(30, 64, 175, 0.06), 0 28px 56px rgba(30, 64, 175, 0.14);
+  --ring: 0 0 0 4px rgba(37, 99, 235, 0.18);
 }
 
 * {
@@ -42,14 +49,17 @@ body {
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
   background:
-    radial-gradient(1100px 520px at 10% -12%, rgba(37, 99, 235, 0.11), transparent 60%),
-    radial-gradient(950px 480px at 104% -4%, rgba(124, 58, 237, 0.1), transparent 55%),
-    radial-gradient(900px 600px at 50% 115%, rgba(14, 165, 233, 0.07), transparent 60%),
-    linear-gradient(180deg, #f3f6fb 0%, #e9eef6 100%);
+    radial-gradient(1100px 520px at 10% -12%, rgba(37, 99, 235, 0.1), transparent 60%),
+    radial-gradient(950px 480px at 104% -4%, rgba(124, 58, 237, 0.09), transparent 55%),
+    linear-gradient(180deg, #f3f6fb 0%, #e8edf6 100%);
   background-attachment: fixed;
 }
 
-/* Érintéses eszközök: nincs 300 ms késleltetés, nincs véletlen nagyítás dupla koppintásra */
+::selection {
+  background: rgba(37, 99, 235, 0.22);
+}
+
+/* Érintéses eszközök */
 canvas,
 button,
 select,
@@ -57,7 +67,70 @@ input[type='range'] {
   touch-action: manipulation;
 }
 
-/* ————— Fejléc (márkázott) ————— */
+/* ————— Auróra (mozgó, lágy színfoltok a háttérben) ————— */
+
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.aurora .ab {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.42;
+  will-change: transform;
+}
+
+.aurora .ab-1 {
+  width: 560px;
+  height: 560px;
+  left: -140px;
+  top: -160px;
+  background: #7aa2ff;
+  animation: drift1 19s var(--ease-slow) infinite alternate;
+}
+
+.aurora .ab-2 {
+  width: 520px;
+  height: 520px;
+  right: -150px;
+  top: 12%;
+  background: #b7a6ff;
+  animation: drift2 24s var(--ease-slow) infinite alternate;
+}
+
+.aurora .ab-3 {
+  width: 620px;
+  height: 620px;
+  left: 32%;
+  bottom: -240px;
+  background: #8fd6ff;
+  animation: drift3 27s var(--ease-slow) infinite alternate;
+}
+
+@keyframes drift1 {
+  to {
+    transform: translate(90px, 70px) scale(1.1);
+  }
+}
+
+@keyframes drift2 {
+  to {
+    transform: translate(-80px, -40px) scale(1.12);
+  }
+}
+
+@keyframes drift3 {
+  to {
+    transform: translate(60px, -70px) scale(1.08);
+  }
+}
+
+/* ————— Fejléc (márkázott, szerif-címmel) ————— */
 
 .topbar {
   position: sticky;
@@ -67,37 +140,52 @@ input[type='range'] {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.8rem 1.5rem;
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
+  padding: 0.85rem 1.5rem;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 0.8rem;
+  gap: 0.85rem;
 }
 
 .brand-mark {
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   flex: none;
   display: grid;
   place-items: center;
-  border-radius: 13px;
+  border-radius: 15px;
   background: var(--grad-brand);
   color: #ffffff;
-  font-size: 1.35rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.5rem;
+  font-weight: 700;
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.38);
+  position: relative;
+}
+
+.brand-mark::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  pointer-events: none;
 }
 
 .brand-text h1 {
   margin: 0;
-  font-size: 1.4rem;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 650;
+  font-size: 1.55rem;
+  line-height: 1.05;
   letter-spacing: 0.005em;
   background: var(--grad-text);
   -webkit-background-clip: text;
@@ -106,21 +194,22 @@ input[type='range'] {
 }
 
 .subtitle {
-  margin: 0.05rem 0 0;
+  margin: 0.12rem 0 0;
   color: var(--text-dim);
-  font-size: 0.86rem;
+  font-size: 0.85rem;
 }
 
 .topbar-badge {
   flex: none;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
   color: var(--accent);
-  background: var(--accent-soft);
+  background: rgba(232, 239, 252, 0.9);
   border: 1px solid rgba(37, 99, 235, 0.18);
   border-radius: 999px;
-  padding: 0.28rem 0.75rem;
+  padding: 0.3rem 0.8rem;
 }
 
 /* ————— Elrendezés ————— */
@@ -142,7 +231,25 @@ input[type='range'] {
     gap: 0.75rem;
   }
 
-  /* Érintési célok: min. 44px (Apple HIG / Material) */
+  .topbar {
+    padding: 0.7rem 1rem;
+  }
+
+  .brand-mark {
+    width: 40px;
+    height: 40px;
+    font-size: 1.3rem;
+  }
+
+  .brand-text h1 {
+    font-size: 1.35rem;
+  }
+
+  .topbar-badge {
+    display: none;
+  }
+
+  /* Érintési célok */
   button,
   .mp-nav button {
     min-height: 44px;
@@ -179,16 +286,35 @@ input[type='range'] {
   }
 }
 
+/* ————— Kártyák emelkedése (mikro-interakció) ————— */
+
+.lesson-card,
+.results,
+.mathpanel,
+.mv-panel {
+  transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease);
+}
+
+.lesson-card:hover,
+.results:hover,
+.mathpanel:hover,
+.mv-panel:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
 /* ————— Oldalsáv (vezérlők) ————— */
 
 .sidebar {
   position: sticky;
-  top: 6.2rem;
-  background: var(--bg-panel);
+  top: 6.3rem;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 1.1rem 1rem;
+  padding: 1.15rem 1.05rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -211,7 +337,7 @@ input[type='range'] {
   font-size: 0.7rem;
   color: var(--text-dim);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.09em;
   font-weight: 700;
 }
 
@@ -222,7 +348,8 @@ input[type='range'] {
   color: var(--accent);
   background: var(--accent-soft);
   border-radius: 999px;
-  padding: 0.05rem 0.55rem;
+  padding: 0.05rem 0.6rem;
+  border: 1px solid rgba(37, 99, 235, 0.14);
 }
 
 .control-group select,
@@ -235,7 +362,7 @@ input[type='range'] {
   margin-top: 0.1rem;
 }
 
-/* Művelet-sor: Számítás + HU/EN egy sorban */
+/* Művelet-sor */
 .actions {
   flex-direction: row;
   gap: 0.5rem;
@@ -262,45 +389,47 @@ select {
   font-size: 0.92rem;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.18s var(--ease), box-shadow 0.18s var(--ease);
 }
 
 select:hover {
-  border-color: #c7d2e0;
+  border-color: #c2cfe0;
 }
 
 select:focus-visible {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+  box-shadow: var(--ring);
 }
 
-/* Egyedi csúszka: kitöltött sáv + fehér fogantyú */
+/* Egyedi csúszka */
 input[type='range'] {
   appearance: none;
   -webkit-appearance: none;
   height: 7px;
   border-radius: 999px;
   background: linear-gradient(to right, var(--accent) var(--fill, 0%), var(--border) var(--fill, 0%));
-  outline-offset: 4px;
+  outline-offset: 6px;
   cursor: pointer;
+  transition: box-shadow 0.2s var(--ease);
 }
 
 input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 19px;
-  height: 19px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: #ffffff;
   border: 2.5px solid var(--accent);
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
   cursor: grab;
-  transition: transform 0.12s ease;
+  transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease);
 }
 
 input[type='range']::-webkit-slider-thumb:hover {
-  transform: scale(1.08);
+  transform: scale(1.12);
+  box-shadow: 0 0 0 7px rgba(37, 99, 235, 0.14), 0 2px 8px rgba(37, 99, 235, 0.35);
 }
 
 input[type='range']::-moz-range-thumb {
@@ -309,7 +438,7 @@ input[type='range']::-moz-range-thumb {
   border-radius: 50%;
   background: #ffffff;
   border: 2.5px solid var(--accent);
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
   cursor: grab;
 }
 
@@ -317,8 +446,11 @@ input[type='range']::-moz-range-track {
   background: transparent;
 }
 
+/* Gombok: élő gradiens + világos árnyék */
 button {
   background: var(--grad-btn);
+  background-size: 160% 160%;
+  background-position: 0% 50%;
   color: #ffffff;
   font-weight: 700;
   border: none;
@@ -326,26 +458,27 @@ button {
   padding: 0.6rem 0.85rem;
   cursor: pointer;
   font-size: 0.9rem;
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.28);
-  transition: transform 0.12s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.28);
+  transition: transform 0.18s var(--ease), box-shadow 0.25s var(--ease),
+    background-position 0.5s var(--ease);
 }
 
 button:hover {
+  background-position: 100% 50%;
   transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.36);
-  filter: brightness(1.05);
+  box-shadow: 0 10px 26px rgba(79, 70, 229, 0.36);
 }
 
 button:active {
-  transform: translateY(1px);
+  transform: translateY(1px) scale(0.99);
 }
 
 button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--ring);
 }
 
-/* Másodlagos gombok (nyelvváltó, elem-navigáció) */
+/* Másodlagos gombok */
 .lang-switch {
   flex-direction: row;
   gap: 0.5rem;
@@ -362,15 +495,11 @@ button:focus-visible {
 .lang-switch button:hover,
 .mp-nav button:hover {
   background: var(--grad-brand);
+  background-size: 160% 160%;
+  background-position: 100% 50%;
   color: #ffffff;
   border-color: transparent;
-  box-shadow: 0 6px 14px rgba(79, 70, 229, 0.3);
-  filter: none;
-}
-
-.lang-switch button:active,
-.mp-nav button:active {
-  transform: none;
+  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.3);
 }
 
 /* ————— Fő játéktér ————— */
@@ -396,7 +525,7 @@ canvas {
   width: 100%;
 }
 
-/* Jelmagyarázat: középre igazított üveg-sáv a vászon alján */
+/* Jelmagyarázat: középre igazított üveg-sáv */
 .legend {
   position: absolute;
   left: 50%;
@@ -407,10 +536,10 @@ canvas {
   gap: 8px;
   font-size: 0.72rem;
   color: var(--text-dim);
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(226, 232, 240, 0.95);
   box-shadow: var(--shadow-sm);
   padding: 6px 12px;
   border-radius: 999px;
@@ -421,7 +550,7 @@ canvas {
   width: 120px;
   height: 10px;
   border-radius: 999px;
-  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.15);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.18);
 }
 
 .legend-sep {
@@ -437,6 +566,7 @@ canvas {
   background: var(--accent-soft);
   border-radius: 999px;
   padding: 0.04rem 0.45rem;
+  border: 1px solid rgba(37, 99, 235, 0.14);
 }
 
 /* Verzió-információ a láblécben */
@@ -447,10 +577,10 @@ canvas {
   font-variant-numeric: tabular-nums;
 }
 
-/* M/V panel: a fő vászon alatt, saját kurzor-kiolvasással */
+/* M/V panel */
 .mv-panel {
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 15px;
   overflow: hidden;
   margin-top: 8px;
   background: var(--bg-panel);
@@ -482,7 +612,6 @@ canvas {
   background: var(--accent-soft);
   box-shadow: none;
   transform: none;
-  filter: none;
 }
 
 .mv-panel.collapsed canvas {
@@ -497,7 +626,7 @@ canvas {
   touch-action: pan-y;
 }
 
-/* Látható hiba-banner: ha az app indítása elhasal, ezt látjuk üres vászon helyett */
+/* Látható hiba-banner */
 .fatal-banner {
   position: fixed;
   top: 0;
@@ -519,23 +648,24 @@ canvas {
   left: 14px;
   bottom: 14px;
   font-size: 0.8rem;
-  padding: 0.5rem 0.9rem;
+  padding: 0.5rem 0.95rem;
   min-height: 40px;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 999px;
   box-shadow: var(--shadow-sm);
+  transition: transform 0.2s var(--ease), box-shadow 0.25s var(--ease), background 0.25s var(--ease);
 }
 
 .anim-btn:hover {
   color: #ffffff;
   background: var(--grad-btn);
   border-color: transparent;
-  transform: none;
-  filter: none;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(79, 70, 229, 0.32);
 }
 
 .anim-btn[aria-pressed='true'] {
@@ -553,9 +683,9 @@ canvas {
   border-radius: 999px;
   overflow: hidden;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   box-shadow: var(--shadow-sm);
 }
 
@@ -579,7 +709,7 @@ canvas {
   color: var(--accent);
   box-shadow: none;
   transform: none;
-  filter: none;
+  box-shadow: none;
 }
 
 .engine-switch button.active {
@@ -599,51 +729,64 @@ canvas {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 1.1rem 1.3rem;
+  padding: 1.15rem 1.35rem;
 }
 
 .lesson-card h2 {
-  margin: 0 0 0.4rem;
-  font-size: 1.08rem;
+  margin: 0 0 0.45rem;
+  font-size: 1.1rem;
   color: var(--accent);
 }
 
-/* ————— Részletek-fülek (szegmentált vezérlő) ————— */
+/* ————— Részletek-fülek (szegmentált, csúszó jelzővel) ————— */
 
 .tabs {
+  position: relative;
   display: flex;
   gap: 0.25rem;
   margin-top: 0.5rem;
-  background: var(--bg-card);
+  background: rgba(240, 244, 250, 0.9);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 0.3rem;
+  padding: 0.32rem;
+}
+
+.tab-indicator {
+  position: absolute;
+  top: 0.32rem;
+  bottom: 0.32rem;
+  left: 0;
+  border-radius: var(--radius-xs);
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(30, 64, 175, 0.14);
+  transition: transform 0.35s var(--ease), width 0.35s var(--ease);
+  will-change: transform, width;
 }
 
 .tab {
+  position: relative;
+  z-index: 1;
   background: transparent;
   color: var(--text-dim);
   border: none;
   border-radius: var(--radius-xs);
-  padding: 0.5rem 1.1rem;
+  padding: 0.5rem 1.15rem;
   font-size: 0.9rem;
   min-height: 40px;
   font-weight: 700;
   box-shadow: none;
+  transition: color 0.25s var(--ease);
 }
 
 .tab:hover {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.7);
+  background: transparent;
   box-shadow: none;
   transform: none;
-  filter: none;
 }
 
 .tab.active {
   color: var(--accent);
-  background: #ffffff;
-  box-shadow: 0 2px 8px rgba(30, 64, 175, 0.12);
 }
 
 .tab-page {
@@ -652,6 +795,7 @@ canvas {
 
 .tab-page.active {
   display: block;
+  animation: pageIn 0.32s var(--ease);
 }
 
 .tab-page#page-inspect.active {
@@ -660,18 +804,29 @@ canvas {
   gap: 0.75rem;
 }
 
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .lesson-card p {
   margin: 0;
   color: var(--text-dim);
   font-size: 0.93rem;
-  line-height: 1.65;
+  line-height: 1.7;
 }
 
-/* ————— Eredmény-kártyák (színes él) ————— */
+/* ————— Eredmény-kártyák ————— */
 
 .results {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 0.7rem;
 }
 
@@ -683,27 +838,27 @@ canvas {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 0.7rem 0.85rem 0.65rem;
+  padding: 0.85rem 0.95rem 0.7rem;
 }
 
-.result-item::after {
+.result-item::before {
   content: '';
   position: absolute;
   left: 0;
   top: 0;
-  bottom: 0;
-  width: 4px;
-  background: var(--rc, var(--accent));
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--rc, var(--accent)), transparent 85%);
 }
 
 .result-item:nth-child(1) {
   --rc: #0ea5e9;
 }
-.result-item:nth-child(3) {
-  --rc: #f59e0b;
-}
 .result-item:nth-child(2) {
   --rc: #7c3aed;
+}
+.result-item:nth-child(3) {
+  --rc: #f59e0b;
 }
 .result-item:nth-child(4) {
   --rc: #10b981;
@@ -713,14 +868,18 @@ canvas {
   font-size: 0.68rem;
   color: var(--text-dim);
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.08em;
   font-weight: 700;
 }
 
 .result-item strong {
-  font-size: 1.15rem;
+  font-size: 1.18rem;
   font-variant-numeric: tabular-nums;
-  margin-top: 0.15rem;
+  margin-top: 0.2rem;
+  background: linear-gradient(120deg, var(--rc, var(--accent)), #1e293b 55%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 /* ————— Matematikai panel ————— */
@@ -730,7 +889,7 @@ canvas {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 1rem 1.3rem;
+  padding: 1.1rem 1.35rem;
 }
 
 .mathpanel:empty {
@@ -818,7 +977,6 @@ canvas {
   font-size: 0.87rem;
 }
 
-/* Elemtípus-címke a MathPanel fejlécében */
 .mp-tag {
   font-size: 0.68rem;
   font-weight: 700;
@@ -831,7 +989,6 @@ canvas {
   background: var(--accent-soft);
 }
 
-/* Gauss-pont táblázat (T6 elemvizsgálat) */
 .mp-table {
   border-collapse: collapse;
   margin: 0.4rem 0 0.2rem;
@@ -877,10 +1034,10 @@ footer {
   color: var(--text-dim);
   font-size: 0.78rem;
   padding: 0.9rem;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
 }
 
-/* ————— Görgetősáv (asztali) ————— */
+/* ————— Görgetősáv ————— */
 
 ::-webkit-scrollbar {
   width: 10px;
@@ -901,4 +1058,25 @@ footer {
 ::-webkit-scrollbar-thumb:hover {
   background: #9aa6ba;
   background-clip: content-box;
+}
+
+/* ————— Mozgáskorlátozás ————— */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .aurora .ab {
+    animation: none;
+    opacity: 0.3;
+  }
 }
