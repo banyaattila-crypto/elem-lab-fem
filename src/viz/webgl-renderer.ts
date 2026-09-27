@@ -39,7 +39,7 @@ export class WebGLRenderer {
       alpha: false,
     });
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#0f172a');
+    this.scene.background = new THREE.Color('#f4f7fb');
 
     const aspect = canvas.width / Math.max(canvas.height, 1);
     const viewSize = 1.2;

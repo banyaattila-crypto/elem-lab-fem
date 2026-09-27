@@ -104,8 +104,8 @@ export class Renderer {
     const ctx = this.ctx;
     const { width, height } = this.canvas;
 
-    // háttér
-    ctx.fillStyle = '#0f172a';
+    // háttér (világos téma)
+    ctx.fillStyle = '#f4f7fb';
     ctx.fillRect(0, 0, width, height);
 
     const b = this.bounds(mesh);
@@ -173,7 +173,7 @@ export class Renderer {
         ctx.stroke();
         // T6: az oldalközép-csomópontokat is bemutatjuk (rácsellenőrzés)
         if ((mesh.elementType ?? 'CST') === 'T6' && elem.nodes.length >= 6) {
-          ctx.fillStyle = 'rgba(226,232,240,0.5)';
+          ctx.fillStyle = 'rgba(51, 65, 85, 0.55)';
           for (let m = 3; m < Math.min(6, elem.nodes.length); m++) {
             const pm = mesh.nodes[elem.nodes[m]!]!;
             const sm = tx(pm.x, pm.y, pm.id);
@@ -263,8 +263,8 @@ export class Renderer {
     const y0 = height - 32;
 
     ctx.save();
-    // háttérpanel
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+    // háttérpanel (világos téma)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
     ctx.beginPath();
     roundRectPath(ctx, x0 - 8, y0 - 18, barW + 16, barH + 30, 6);
     ctx.fill();
@@ -275,12 +275,12 @@ export class Renderer {
       ctx.fillStyle = stressCss(i / (steps - 1));
       ctx.fillRect(x0 + (i * barW) / steps, y0, barW / steps + 1, barH);
     }
-    ctx.strokeStyle = 'rgba(226, 232, 240, 0.35)';
+    ctx.strokeStyle = 'rgba(51, 65, 85, 0.3)';
     ctx.lineWidth = 1;
     ctx.strokeRect(x0, y0, barW, barH);
 
     // feliratok
-    ctx.fillStyle = 'rgba(226, 232, 240, 0.9)';
+    ctx.fillStyle = 'rgba(51, 65, 85, 0.9)';
     ctx.font = '10px system-ui, sans-serif';
     ctx.textBaseline = 'top';
     ctx.textAlign = 'left';

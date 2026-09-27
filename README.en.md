@@ -14,7 +14,7 @@ load, load type (point ⇄ distributed), material, mesh density — and watch th
 Von Mises stress heatmap and deformed shape update in real time. The entire
 solver is written in TypeScript and runs **client-side**: no backend, no uploads.
 The footer always shows which version and build you are looking at
-(`v0.9.1 · build …`).
+(`v0.10.0 · build …`).
 
 ## Highlights
 
@@ -103,7 +103,7 @@ KaTeX · Vitest · vite-plugin-pwa
 
 ## Status & roadmap
 
-🟢 **v0.9.1 live**: 7 models, annotations + reaction values, M/V panel with cursor
+🟢 **v0.10.0 live**: light, airy redesign — 7 models, annotations + reaction values, M/V panel with cursor
 readout, distributed loads, T6 + WebGL 3D view, MathPanel/NodePanel — 73/73 tests,
 deployed on Vercel.
 Next: boundary-fitted mesh for an accurate Kt ≈ 3 (currently 4.1 → 5.0 with
