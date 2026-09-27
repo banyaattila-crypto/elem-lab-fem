@@ -2,7 +2,7 @@
 
 > **Projekt:** Interaktív, oktatási célú végeselem-módszer (FEM) játszótér — web-first PWA
 > **Utolsó frissítés:** 2026-09-26
-> **Státusz:** 🟢 MVP-mag működik: szolver + 15/15 validációs teszt + build kész
+> **Státusz:** 🟢 MVP él: szolver + MathPanel (valós idejű elemvizsgálat), 20/20 teszt, build OK, **Vercel deploy kész**
 
 ---
 
@@ -49,7 +49,7 @@ A felhasználó kész 2D modelleket variál csúszkákkal (terhelés, anyag, há
 | Lineáris algebra | Saját ritka mátrix + **Conjugate Gradient** szolver | Tanulási érték; ha szűk lesz: `numeric.js`-típusú lib vagy wasm |
 | PWA | Vite PWA plugin (manifest + service worker) | Telepíthető mobilon, offline működés |
 | Tesztelés | **Vitest** | Vite-natív; analitikus validációs tesztek a solverhoz |
-| Hosting | GitHub Pages | Ingyenes, portfólióbarát |
+| Hosting | **Vercel** (Git-alapú CI/CD, ingyenes Hobby) + GitHub repo | `vercel.json` rögzíti: vite framework, `npm run build`, `dist` kimenet |
 
 ### 2.1 Kapcsolódó meglévő projektek
 
@@ -62,38 +62,47 @@ A felhasználó kész 2D modelleket variál csúszkákkal (terhelés, anyag, há
 ```
 elemlab/
 ├── STATUS_REPORT.md          ← ez a fájl
+├── README.md                 ← repo leírás (GitHub)
+├── vercel.json               ← Vercel deploy konfiguráció
+├── vite.config.ts            ← Vite + PWA plugin
+├── tsconfig.json / package.json
 ├── docs/
 │   ├── fem-spec.md           ← EEM-mag matematikai specifikáció (képletekkel)
 │   └── ui-vazlat.html        ← UI vázlat, böngészőben megnyitható
 ├── index.html
 ├── public/
 │   ├── manifest.webmanifest  ← PWA manifest
-│   └── icons/                ← PWA ikonok
+│   └── icons/                ← PWA ikonok (SVG)
 ├── src/
-│   ├── main.ts               ← belépési pont
+│   ├── main.ts               ← belépési pont + kattintáskezelés
 │   ├── fem/                  ← a számító mag (tisztán tesztelhető)
 │   │   ├── types.ts          ← Mesh, Node, Element, BC típusok
-│   │   ├── linalg.ts         ← ritka mátrix, CG-szolver
+│   │   ├── linalg.ts         ← CSR ritka mátrix, Jacobi-előkondicionált CG
 │   │   ├── cst.ts            ← konstans feszültségű háromszögelem
 │   │   ├── assemble.ts       ← globális merevségi mátrix összeállítás
-│   │   └── solve.ts          ← teljes megoldási pipeline
+│   │   └── solve.ts          ← megoldás DOF-eliminációval
 │   ├── models/               ← előre definiált modellek
-│   │   ├── cantilever.ts     ← konzolgerenda
+│   │   ├── meshgen.ts        ← rács-hálógenerátor + anyagkatalógus
+│   │   ├── cantilever.ts     ← konzolgerenda (+ analitikus hajlás)
 │   │   ├── trussBridge.ts    ← rácsos híd
-│   │   └── plateWithHole.ts  ← lyukas lemez
-│   ├── viz/                  ← Canvas 2D hőtérkép + deformáció-animáció
-│   │   ├── renderer.ts
-│   │   └── colormap.ts
-│   ├── ui/                   ← csúszkák, leckék, i18n
-│   │   ├── controls.ts
-│   │   ├── lessons.ts
-│   │   └── i18n.ts
+│   │   └── plateWithHole.ts  ← lyukas lemez (+ Kt referencia)
+│   ├── viz/                  ← Canvas 2D vizualizáció
+│   │   ├── renderer.ts       ← hőtérkép + deformáció + kijelölés-kiemelés
+│   │   ├── colormap.ts       ← viridis színtérkép
+│   │   └── picking.ts        ← elem-kiválasztás (screen→world)
+│   ├── ui/
+│   │   ├── mathpanel.ts      ← elemvizsgálat számítása + formázók
+│   │   ├── mathpanel-view.ts ← KaTeX levezetés-renderelés
+│   │   ├── controls.ts       ← csúszkák, választók
+│   │   ├── lessons.ts        ← lecke-kártyák
+│   │   └── i18n.ts           ← nyelvkezelés
 │   └── locales/
 │       ├── hu.json
 │       └── en.json
 └── tests/
-    ├── linalg.test.ts
-    └── cst.test.ts           ← analitikus validáció (pl. gerendahajlás)
+    ├── linalg.test.ts        ← CSR + CG egységtesztek
+    ├── fem.test.ts           ← analitikus validáció (hajlás, Kt, Von Mises)
+    └── picking.test.ts       ← kiválasztás + transzformáció tesztek
 ```
 
 ---
@@ -108,8 +117,9 @@ elemlab/
 - [x] Von Mises hőtérkép + deformált alak (Canvas 2D) — animáció később
 - [x] Lecke-kártyák (modellenként 1 magyarázó kártya)
 - [x] HU/EN nyelvváltás
-- [x] PWA: manifest + service worker (build OK; eszközteszt pending)
-- [x] Analitikus validációs tesztek (Vitest) — 15/15 zöld
+- [x] PWA: manifest + service worker (build OK)
+- [x] **Valós idejű elemvizsgálat (MathPanel)**: kattintásra teljes CST-levezetés KaTeX képletekkel, élő adatokkal, elemnavigációval (◀ ▶), canvas-kiemeléssel
+- [x] Analitikus validációs tesztek (Vitest) — 20/20 zöld
 
 ### 4.2 Szándékosan későbbre tolva
 
@@ -126,9 +136,9 @@ elemlab/
 |---|---|---|---|
 | 0 | Projektváz: Vite + TS + PWA keret | 1 nap | 🟢 kész |
 | 1 | FEM-mag (CST) + validációs tesztek | 1–2 hét | 🟢 kész (15/15 teszt, build OK) |
-| 2 | UI, csúszkák, hőtérkép-vizualizáció | 1–2 hét | 🟡 alapok készek, mobil-polish pending |
-| 3 | Leckék, i18n, mobil polish | 1 hét | ⚪ nem kezdődött el |
-| 4 | Deploy (GitHub Pages) + portfólióoldal | 1–2 nap | ⚪ nem kezdődött el |
+| 2 | UI, csúszkák, hőtérkép, MathPanel | 1–2 hét | 🟢 kész (MathPanel + KaTeX; kis mobil-polish maradt) |
+| 3 | Leckék, i18n, mobil polish | 1 hét | 🟡 leckék + i18n kész, mobil polish hátravan |
+| 4 | Deploy + portfólióoldal | 1–2 nap | 🟢 GitHub repo + Vercel deploy kész; portfólióoldal pending |
 
 ---
 
@@ -150,8 +160,8 @@ A teljes, képletekkel ellátott specifikáció: **[docs/fem-spec.md](docs/fem-s
 | 1 | Nagy hálónál (30k+ elem) lassulhat a TS-szolver | Hálósűrűség-felső korlát; később wasm-motor |
 | 2 | A numerikus stabilitás ( kondíciószám ) ronthatja a pontosságot | Analitikus tesztek + relatív hiba küszöb a CI-ban |
 | 3 | Színtér diszlexiabarát diszkrimináció | ColorBrewer/viridis-szerű paletta, színvakság-barát |
-| 4 | Nyitott: pontos PWA-plugin verzió / service worker stratégia | Fázis 0-ban döntés |
-| 5 | Nyitott: GitHub Pages URL / repo neve | Deploy előtt döntés |
+| 4 | ~~Nyitott: PWA-plugin / service worker stratégia~~ | **Lezárva:** vite-plugin-pwa 0.21, generateSW, autoUpdate |
+| 5 | ~~Nyitott: repo név / hosting~~ | **Lezárva:** `elem-lab-fem` (privát) + Vercel deploy |
 
 ---
 
@@ -172,3 +182,4 @@ A teljes, képletekkel ellátott specifikáció: **[docs/fem-spec.md](docs/fem-s
 | 2026-09-26 | README hozzáadva; **GitHub repo létrehozva és feltöltve**: `banyaattila-crypto/elem-lab-fem` (privát) |
 | 2026-09-26 | Vercel bekötve (vercel.json: vite framework, dist kimenet); füstteszt OK (HTTP 200) |
 | 2026-09-26 | **Valós idejű elemvizsgálat (MathPanel)**: kattintásra egy elem teljes CST-levezetése KaTeX képletekkel, élő számokkal — geometria, b/c csúszóintek, A, D, B, kₑ, uₑ, ε, σ, Von Mises; elemnavigáció ◀ ▶; kiemelés a canvason; picking tiszta modullal + 5 új teszt (20/20 zöld) |
+| 2026-09-26 | STATUS_REPORT.md átfogó frissítése: struktúra a valósághoz igazítva, hosting → Vercel, mérföldkövek és kockázatok aktualizálva |
