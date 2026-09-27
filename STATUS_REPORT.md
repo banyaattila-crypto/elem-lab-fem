@@ -169,3 +169,4 @@ A teljes, képletekkel ellátott specifikáció: **[docs/fem-spec.md](docs/fem-s
 | 2026-09-26 | **15/15 validációs teszt zöld**; `npm run build` OK (20,75 kB JS, 7,9 kB gzip) |
 | 2026-09-26 | `docs/fem-spec.md` — EEM-mag matematikai specifikáció (LaTeX képletekkel) |
 | 2026-09-26 | `docs/ui-vazlat.html` — UI-vázlat (statikus mockup) |
+| 2026-09-26 | README hozzáadva; **GitHub repo létrehozva és feltöltve**: `banyaattila-crypto/elem-lab-fem` (privát) |
