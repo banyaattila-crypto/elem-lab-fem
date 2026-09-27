@@ -78,10 +78,14 @@ let lastSol: SolutionResult | null = null;
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
   <header class="topbar">
-    <div>
-      <h1>ElemLab</h1>
-      <p class="subtitle" id="subtitle">Végeselem-módszer játszótér</p>
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">E</span>
+      <div class="brand-text">
+        <h1>ElemLab</h1>
+        <p class="subtitle" id="subtitle">Végeselem-módszer játszótér</p>
+      </div>
     </div>
+    <span class="topbar-badge" id="topver"></span>
   </header>
   <div class="layout">
     <aside class="sidebar" id="controls-root"></aside>
@@ -630,6 +634,8 @@ if (verEl) {
   verEl.textContent = ` v${APP_VERSION} · build ${BUILD_ID.slice(0, 16).replace('T', ' ')}`;
   verEl.title = `Teljes build-ID: ${BUILD_ID}`;
 }
+const topVerEl = document.querySelector<HTMLSpanElement>('#topver');
+if (topVerEl) topVerEl.textContent = `v${APP_VERSION}`;
 console.info(`[ElemLab] v${APP_VERSION} · build ${BUILD_ID}`);
 window.ELEMLAB = { version: APP_VERSION, buildId: BUILD_ID };
 

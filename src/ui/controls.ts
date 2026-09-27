@@ -18,6 +18,11 @@ export interface ControlsCallbacks {
 /** Gerenda-modellek, ahol a terhelés-típus választható */
 const BEAM_MODELS = new Set(['cantilever', 'simplySupported', 'fixedFixed']);
 
+/** Terhelés-erő formázó a csúszka érték-kijelzőjéhez */
+function fmtLoad(v: number): string {
+  return v % 1000 === 0 ? `${v / 1000} kN` : `${v} N`;
+}
+
 export interface ModelOption {
   id: string;
   label: string;
@@ -62,14 +67,14 @@ export class ControlsPanel {
 
     // 2) Terhelés csúszka
     this.root.appendChild(
-      this.slider('load', t('controls.load'), 0, 10000, 100, 1000, (v) =>
+      this.slider('load', t('controls.load'), 0, 10000, 100, 1000, fmtLoad, (v) =>
         this.cb.onParamChange('load', v),
       ),
     );
 
     // 3) Hálósűrűség csúszka
     this.root.appendChild(
-      this.slider('density', t('controls.density'), 1, 5, 1, 3, (v) =>
+      this.slider('density', t('controls.density'), 1, 5, 1, 3, (v) => `${v}`, (v) =>
         this.cb.onParamChange('density', v),
       ),
     );
@@ -88,7 +93,7 @@ export class ControlsPanel {
 
     // 5) Deformáció-nagyítás
     this.root.appendChild(
-      this.slider('defscale', t('controls.deformation'), 10, 5000, 10, 500, (v) =>
+      this.slider('defscale', t('controls.deformation'), 10, 5000, 10, 500, (v) => `×${v}`, (v) =>
         this.cb.onParamChange('defscale', v),
       ),
     );
@@ -146,13 +151,18 @@ export class ControlsPanel {
     max: number,
     step: number,
     value: number,
+    fmt: (v: number) => string,
     onInput: (v: number) => void,
   ): HTMLDivElement {
     const div = document.createElement('div');
     div.className = 'control-group';
+    const head = document.createElement('div');
+    head.className = 'field-head';
     const lab = document.createElement('label');
     lab.htmlFor = id;
     lab.textContent = label;
+    const val = document.createElement('span');
+    val.className = 'field-val';
     const input = document.createElement('input');
     input.type = 'range';
     input.id = id;
@@ -160,8 +170,19 @@ export class ControlsPanel {
     input.max = String(max);
     input.step = String(step);
     input.value = String(value);
-    input.addEventListener('input', () => onInput(Number(input.value)));
-    div.append(lab, input);
+    const update = (v: number) => {
+      val.textContent = fmt(v);
+      const pct = ((v - min) / (max - min)) * 100;
+      input.style.setProperty('--fill', `${pct}%`);
+    };
+    update(value);
+    input.addEventListener('input', () => {
+      const v = Number(input.value);
+      update(v);
+      onInput(v);
+    });
+    head.append(lab, val);
+    div.append(head, input);
     return div;
   }
 }
