@@ -5,6 +5,7 @@
 
 import type { Mesh, SolutionResult } from '../fem/types';
 import { stressCss } from './colormap';
+import { isDarkTheme } from './theme';
 import type { ViewTransform } from './picking';
 import {
   computeDimensionLines,
@@ -74,6 +75,7 @@ export class Renderer {
   panY = 0;
   private lastMeshRef: Mesh | null = null;
   private dotPattern: CanvasPattern | null = null;
+  private patternDark = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -83,12 +85,12 @@ export class Renderer {
   }
 
   /** Pontrács-minta (mérnöki papír): egyszer létrehozva, sokszorosítva */
-  private makeDotPattern(): CanvasPattern {
+  private makeDotPattern(dark: boolean): CanvasPattern {
     const c = document.createElement('canvas');
     c.width = 26;
     c.height = 26;
     const g = c.getContext('2d')!;
-    g.fillStyle = 'rgba(71, 96, 150, 0.4)';
+    g.fillStyle = dark ? 'rgba(148, 180, 220, 0.3)' : 'rgba(71, 96, 150, 0.4)';
     g.beginPath();
     g.arc(13, 13, 1.05, 0, Math.PI * 2);
     g.fill();
@@ -98,15 +100,24 @@ export class Renderer {
   /** Színpadi háttér: lágy színátmenet + pontrács + középponti ragyogás */
   private paintBackdrop(width: number, height: number): void {
     const ctx = this.ctx;
+    const dark = isDarkTheme();
     const grad = ctx.createLinearGradient(0, 0, 0, height);
-    grad.addColorStop(0, '#fafdff');
-    grad.addColorStop(1, '#ecf2fa');
+    if (dark) {
+      grad.addColorStop(0, '#0e1830');
+      grad.addColorStop(1, '#0a1120');
+    } else {
+      grad.addColorStop(0, '#fafdff');
+      grad.addColorStop(1, '#ecf2fa');
+    }
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
 
-    if (!this.dotPattern) this.dotPattern = this.makeDotPattern();
+    if (!this.dotPattern || this.patternDark !== dark) {
+      this.dotPattern = this.makeDotPattern(dark);
+      this.patternDark = dark;
+    }
     ctx.save();
-    ctx.globalAlpha = 0.55;
+    ctx.globalAlpha = dark ? 0.4 : 0.55;
     ctx.fillStyle = this.dotPattern;
     ctx.fillRect(0, 0, width, height);
     ctx.restore();
@@ -115,9 +126,15 @@ export class Renderer {
     const gy = height / 2;
     const R = Math.max(width, height) * 0.7;
     const glow = ctx.createRadialGradient(gx, gy, 30, gx, gy, R);
-    glow.addColorStop(0, 'rgba(37, 99, 235, 0.12)');
-    glow.addColorStop(0.55, 'rgba(37, 99, 235, 0.035)');
-    glow.addColorStop(1, 'rgba(37, 99, 235, 0)');
+    if (dark) {
+      glow.addColorStop(0, 'rgba(90, 140, 255, 0.18)');
+      glow.addColorStop(0.55, 'rgba(90, 140, 255, 0.05)');
+      glow.addColorStop(1, 'rgba(90, 140, 255, 0)');
+    } else {
+      glow.addColorStop(0, 'rgba(37, 99, 235, 0.12)');
+      glow.addColorStop(0.55, 'rgba(37, 99, 235, 0.035)');
+      glow.addColorStop(1, 'rgba(37, 99, 235, 0)');
+    }
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, width, height);
   }
@@ -208,12 +225,12 @@ export class Renderer {
       ctx.fill();
 
       if (opts.showMeshEdges) {
-        ctx.strokeStyle = 'rgba(15,23,42,0.35)';
+        ctx.strokeStyle = isDarkTheme() ? 'rgba(203, 213, 225, 0.16)' : 'rgba(51, 65, 85, 0.4)';
         ctx.lineWidth = 0.5;
         ctx.stroke();
         // T6: az oldalközép-csomópontokat is bemutatjuk (rácsellenőrzés)
         if ((mesh.elementType ?? 'CST') === 'T6' && elem.nodes.length >= 6) {
-          ctx.fillStyle = 'rgba(51, 65, 85, 0.55)';
+          ctx.fillStyle = isDarkTheme() ? 'rgba(226, 232, 240, 0.55)' : 'rgba(51, 65, 85, 0.55)';
           for (let m = 3; m < Math.min(6, elem.nodes.length); m++) {
             const pm = mesh.nodes[elem.nodes[m]!]!;
             const sm = tx(pm.x, pm.y, pm.id);
@@ -303,8 +320,9 @@ export class Renderer {
     const y0 = height - 32;
 
     ctx.save();
-    // háttérpanel (világos téma)
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+    // háttérpanel (témafüggő)
+    const dark = isDarkTheme();
+    ctx.fillStyle = dark ? 'rgba(13, 20, 36, 0.85)' : 'rgba(255, 255, 255, 0.92)';
     ctx.beginPath();
     roundRectPath(ctx, x0 - 8, y0 - 18, barW + 16, barH + 30, 6);
     ctx.fill();
@@ -315,12 +333,12 @@ export class Renderer {
       ctx.fillStyle = stressCss(i / (steps - 1));
       ctx.fillRect(x0 + (i * barW) / steps, y0, barW / steps + 1, barH);
     }
-    ctx.strokeStyle = 'rgba(51, 65, 85, 0.3)';
+    ctx.strokeStyle = dark ? 'rgba(226, 232, 240, 0.3)' : 'rgba(51, 65, 85, 0.3)';
     ctx.lineWidth = 1;
     ctx.strokeRect(x0, y0, barW, barH);
 
     // feliratok
-    ctx.fillStyle = 'rgba(51, 65, 85, 0.9)';
+    ctx.fillStyle = dark ? 'rgba(226, 232, 240, 0.9)' : 'rgba(51, 65, 85, 0.9)';
     ctx.font = '10px system-ui, sans-serif';
     ctx.textBaseline = 'top';
     ctx.textAlign = 'left';

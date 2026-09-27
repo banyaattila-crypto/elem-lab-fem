@@ -5,6 +5,7 @@
  */
 
 import type { Mesh, MeshAnnotation, Node, SolutionResult } from '../fem/types';
+import { isDarkTheme } from './theme';
 
 /** Egy méretvonal leírója képernyő-koordinátákban */
 interface DimLine {
@@ -82,8 +83,8 @@ export function drawDimensionLines(
   lines: DimLine[],
 ): void {
   ctx.save();
-  ctx.strokeStyle = 'rgba(71, 85, 105, 0.85)';
-  ctx.fillStyle = 'rgba(51, 65, 85, 0.95)';
+  ctx.strokeStyle = isDarkTheme() ? 'rgba(160, 178, 200, 0.85)' : 'rgba(71, 85, 105, 0.85)';
+  ctx.fillStyle = isDarkTheme() ? 'rgba(203, 213, 225, 0.95)' : 'rgba(51, 65, 85, 0.95)';
   ctx.lineWidth = 1;
   ctx.font = '11px system-ui, sans-serif';
   ctx.textAlign = 'center';
@@ -153,8 +154,8 @@ export function drawSupports(
   const supports = mesh.annotation?.supports ?? [];
   if (supports.length === 0) return;
   ctx.save();
-  ctx.strokeStyle = 'rgba(51, 65, 85, 0.95)';
-  ctx.fillStyle = 'rgba(100, 116, 139, 0.9)';
+  ctx.strokeStyle = isDarkTheme() ? 'rgba(226, 232, 240, 0.95)' : 'rgba(51, 65, 85, 0.95)';
+  ctx.fillStyle = isDarkTheme() ? 'rgba(148, 163, 184, 0.9)' : 'rgba(100, 116, 139, 0.9)';
   ctx.lineWidth = 1.5;
 
   const S = 14; // szimbólum mérete [px]
@@ -224,8 +225,8 @@ export function drawLoadArrows(
   const loads = mesh.annotation?.pointLoads ?? [];
   if (loads.length === 0) return;
   ctx.save();
-  ctx.strokeStyle = '#ef4444';
-  ctx.fillStyle = '#ef4444';
+  ctx.strokeStyle = isDarkTheme() ? '#f87171' : '#ef4444';
+  ctx.fillStyle = isDarkTheme() ? '#f87171' : '#ef4444';
   ctx.lineWidth = 2;
   ctx.font = '11px system-ui, sans-serif';
 
@@ -279,8 +280,8 @@ export function drawDistributedLoads(
   const loads = mesh.annotation?.distLoads ?? [];
   if (loads.length === 0) return;
   ctx.save();
-  ctx.strokeStyle = '#ea580c';
-  ctx.fillStyle = '#ea580c';
+  ctx.strokeStyle = isDarkTheme() ? '#fb923c' : '#ea580c';
+  ctx.fillStyle = isDarkTheme() ? '#fb923c' : '#ea580c';
   ctx.lineWidth = 1.5;
   ctx.font = '11px system-ui, sans-serif';
 
@@ -340,7 +341,7 @@ export function drawReactionValues(
   if (supports.length === 0) return;
   ctx.save();
   ctx.font = '10px system-ui, sans-serif';
-  ctx.fillStyle = '#16a34a';
+  ctx.fillStyle = isDarkTheme() ? '#4ade80' : '#16a34a';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
@@ -395,15 +396,16 @@ export function drawInfoPanel(
   const boxW = Math.min(wMax + 2 * pad, canvasWidth - 20);
   const boxH = lines.length * lineH + 2 * pad - 3;
 
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.88)';
+  const dark = isDarkTheme();
+  ctx.fillStyle = dark ? 'rgba(13, 20, 36, 0.82)' : 'rgba(255, 255, 255, 0.9)';
   ctx.beginPath();
   roundRectPath(ctx, 10, 10, boxW, boxH, 8);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(100, 116, 139, 0.5)';
+  ctx.strokeStyle = dark ? 'rgba(148, 163, 184, 0.3)' : 'rgba(100, 116, 139, 0.5)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  ctx.fillStyle = 'rgba(30, 41, 59, 0.92)';
+  ctx.fillStyle = dark ? 'rgba(226, 232, 240, 0.92)' : 'rgba(30, 41, 59, 0.92)';
   lines.forEach((s, i) => {
     ctx.fillText(s, 10 + pad, 10 + pad + i * lineH);
   });

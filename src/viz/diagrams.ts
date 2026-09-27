@@ -12,6 +12,7 @@
  */
 
 import type { Mesh, SolutionResult } from '../fem/types';
+import { isDarkTheme } from './theme';
 
 /** Egy x-helyhez tartozó diagram-érték */
 export interface DiagramSample {
@@ -217,11 +218,12 @@ export class MVPanel {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, cssW, cssH);
 
-    ctx.fillStyle = 'rgba(248, 250, 252, 0.9)';
+    const dark = isDarkTheme();
+    ctx.fillStyle = dark ? 'rgba(10, 18, 34, 0.55)' : 'rgba(248, 250, 252, 0.9)';
     ctx.fillRect(0, 0, cssW, cssH);
 
     if (this.samples.length < 2) {
-      ctx.fillStyle = 'rgba(71, 85, 105, 0.8)';
+      ctx.fillStyle = dark ? 'rgba(203, 213, 225, 0.7)' : 'rgba(71, 85, 105, 0.8)';
       ctx.font = '12px system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('M/V diagram — válassz gerenda-modellt', cssW / 2, cssH / 2);
@@ -243,8 +245,15 @@ export class MVPanel {
     maxS = Math.max(maxS, 1e-9);
     maxV = Math.max(maxV, 1e-9);
 
-    this.drawSubPlot(mTop, subH, maxS, 'M (hajlítónyomaték)', 'sigmaTop', '#d97706', 'Nm');
-    this.drawSubPlot(vTop, subH, maxV, 'V (nyíróerő)', 'shear', '#0284c7', 'N');
+    const m = dark
+      ? { line: '#fbbf24', fill: 'rgba(251, 191, 36, 0.2)' }
+      : { line: '#d97706', fill: 'rgba(217, 119, 6, 0.14)' };
+    const v = dark
+      ? { line: '#38bdf8', fill: 'rgba(56, 189, 248, 0.2)' }
+      : { line: '#0284c7', fill: 'rgba(2, 132, 199, 0.14)' };
+
+    this.drawSubPlot(mTop, subH, maxS, 'M (hajlítónyomaték)', 'sigmaTop', m, 'Nm');
+    this.drawSubPlot(vTop, subH, maxV, 'V (nyíróerő)', 'shear', v, 'N');
 
     // kurzor
     if (this.cursorWx != null) {
@@ -252,7 +261,7 @@ export class MVPanel {
       const val = this.sampleAt(this.cursorWx);
       if (val) {
         ctx.save();
-        ctx.strokeStyle = 'rgba(15, 23, 42, 0.4)';
+        ctx.strokeStyle = dark ? 'rgba(226, 232, 240, 0.5)' : 'rgba(15, 23, 42, 0.4)';
         ctx.lineWidth = 1;
         ctx.setLineDash([4, 3]);
         ctx.beginPath();
@@ -264,11 +273,11 @@ export class MVPanel {
         // pöttyök a görbéken
         const yM = mTop + subH / 2 - (val.sigmaTop / maxS) * (subH * 0.42);
         const yV = vTop + subH / 2 - (val.shear / maxV) * (subH * 0.42);
-        ctx.fillStyle = '#d97706';
+        ctx.fillStyle = m.line;
         ctx.beginPath();
         ctx.arc(cx, yM, 3.5, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = '#0284c7';
+        ctx.fillStyle = v.line;
         ctx.beginPath();
         ctx.arc(cx, yV, 3.5, 0, Math.PI * 2);
         ctx.fill();
@@ -285,11 +294,11 @@ export class MVPanel {
         let bx = cx + 8;
         if (bx + boxW > cssW - 4) bx = cx - boxW - 8;
         const by = mTop + 4;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.fillStyle = dark ? 'rgba(2, 6, 23, 0.95)' : 'rgba(255, 255, 255, 0.95)';
         ctx.fillRect(bx, by, boxW, boxH);
-        ctx.strokeStyle = 'rgba(100, 116, 139, 0.6)';
+        ctx.strokeStyle = dark ? 'rgba(148, 163, 184, 0.5)' : 'rgba(100, 116, 139, 0.6)';
         ctx.strokeRect(bx, by, boxW, boxH);
-        ctx.fillStyle = '#1e293b';
+        ctx.fillStyle = dark ? '#e2e8f0' : '#1e293b';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
         lines.forEach((s, i) => ctx.fillText(s, bx + 8, by + 6 + i * 15));
@@ -298,7 +307,7 @@ export class MVPanel {
     }
 
     // x-tengely feliratok
-    ctx.fillStyle = 'rgba(71, 85, 105, 0.85)';
+    ctx.fillStyle = dark ? 'rgba(148, 163, 184, 0.85)' : 'rgba(71, 85, 105, 0.85)';
     ctx.font = '10px system-ui, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
@@ -313,16 +322,17 @@ export class MVPanel {
     maxVal: number,
     label: string,
     key: 'sigmaTop' | 'shear',
-    color: string,
+    pal: { line: string; fill: string },
     unit: string,
   ): void {
     const ctx = this.ctx;
     const mid = top + subH / 2;
     const l = this.plotLeft();
     const r = this.plotRight();
+    const dark = isDarkTheme();
 
     // alapvonal
-    ctx.strokeStyle = 'rgba(100, 116, 139, 0.5)';
+    ctx.strokeStyle = dark ? 'rgba(148, 163, 184, 0.35)' : 'rgba(100, 116, 139, 0.5)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(l, mid);
@@ -340,11 +350,11 @@ export class MVPanel {
     ctx.lineTo(r, mid);
     ctx.lineTo(l, mid);
     ctx.closePath();
-    ctx.fillStyle = color === '#d97706' ? 'rgba(217, 119, 6, 0.14)' : 'rgba(2, 132, 199, 0.14)';
+    ctx.fillStyle = pal.fill;
     ctx.fill();
 
     // görbe
-    ctx.strokeStyle = color;
+    ctx.strokeStyle = pal.line;
     ctx.lineWidth = 1.8;
     ctx.beginPath();
     this.samples.forEach((s, i) => {
@@ -356,7 +366,7 @@ export class MVPanel {
     ctx.stroke();
 
     // feliratok
-    ctx.fillStyle = color;
+    ctx.fillStyle = pal.line;
     ctx.font = '11px system-ui, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';

@@ -26,6 +26,7 @@ import { ControlsPanel, type ModelOption } from './ui/controls';
 import { APP_VERSION, BUILD_ID } from './version';
 import { lessonFor } from './ui/lessons';
 import { setLang, type Lang } from './ui/i18n';
+import type { Theme } from './viz/theme';
 import type { Mesh, SolutionResult } from './fem/types';
 import type { MaterialKey } from './models/meshgen';
 
@@ -87,12 +88,14 @@ app.innerHTML = `
       </div>
     </div>
     <span class="topbar-badge" id="topver"></span>
+    <button id="theme-toggle" class="theme-toggle" aria-pressed="false"></button>
   </header>
   <div class="layout">
     <aside class="sidebar" id="controls-root"></aside>
     <main class="stage">
       <div class="canvas-wrap">
         <canvas id="canvas"></canvas>
+        <div class="mesh-stats" id="mesh-stats" aria-hidden="true"></div>
         <div class="legend" id="legend">
           <span id="legend-lo">0</span>
           <div class="legend-bar" id="legend-bar"></div>
@@ -420,16 +423,16 @@ const controls = new ControlsPanel(
   {
     onModelChange: (id) => {
       state.modelId = id;
-      rebuildAndSolve();
+      rebuildAndSolve(true);
     },
     onParamChange: (param, value) => {
       applyParam(param as ParamKey, value);
       rebuildAndSolve();
     },
-    onSolve: () => rebuildAndSolve(),
+    onSolve: () => rebuildAndSolve(true),
     onLoadTypeChange: (lt) => {
       state.loadType = lt;
-      rebuildAndSolve();
+      rebuildAndSolve(true);
     },
     onLangChange: (lang) => {
       setLang(lang);
@@ -477,8 +480,9 @@ function currentMesh(): Mesh {
   }
 }
 
-function rebuildAndSolve(): void {
+function rebuildAndSolve(flash = false): void {
   resizeCanvas();
+  if (flash) flashCanvas();
   let mesh = currentMesh();
   if (state.elementType === 'T6') {
     mesh = convertToT6(mesh);
@@ -497,6 +501,7 @@ function rebuildAndSolve(): void {
   updateResults(sol, getLang());
   updateLesson(state.modelId, getLang());
   renderLegend(sol.maxVonMises || 1, state.defscale);
+  updateMeshStats(mesh);
   updateMathPanel();
   updateNodePanel();
 }
@@ -567,6 +572,7 @@ function localizeStatic(lang: Lang): void {
       if (label) opt.textContent = label[lang];
     }
   }
+  updateThemeLabel();
 }
 
 // ————— Formázó segédek —————
@@ -638,8 +644,65 @@ function setEngineButtons(): void {
 document.querySelector<HTMLButtonElement>('#elem-t6')!.addEventListener('click', () => {
   state.elementType = state.elementType === 'CST' ? 'T6' : 'CST';
   setEngineButtons();
-  rebuildAndSolve();
+  rebuildAndSolve(true);
 });
+
+// ————— Világos / éjszakai mód —————
+// A data-theme attribútum az <html>-en él; a rajzolók és a CSS is ezt olvassák.
+
+function updateThemeLabel(): void {
+  const btn = document.querySelector<HTMLButtonElement>('#theme-toggle');
+  if (!btn) return;
+  const dark = document.documentElement.dataset.theme === 'dark';
+  const hu = getLang() === 'hu';
+  btn.textContent = dark ? '☀' : '☾';
+  btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+  btn.title = hu ? (dark ? 'Világos mód' : 'Éjszakai mód') : dark ? 'Light mode' : 'Dark mode';
+}
+
+function applyTheme(theme: Theme): void {
+  document.documentElement.dataset.theme = theme;
+  try {
+    localStorage.setItem('elemlab-theme', theme);
+  } catch {
+    /* privát módban nincs tárhely — a munkamenetre érvényes marad */
+  }
+  updateThemeLabel();
+  redraw();
+}
+
+function initTheme(): void {
+  let theme: Theme = 'light';
+  try {
+    const stored = localStorage.getItem('elemlab-theme');
+    theme = stored === 'dark' || stored === 'light' ? stored : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  } catch {
+    theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  document.documentElement.dataset.theme = theme;
+  updateThemeLabel();
+}
+
+document.querySelector<HTMLButtonElement>('#theme-toggle')!.addEventListener('click', () => {
+  applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+});
+
+// ————— Vászon méret-chip + újraszámolás-villanás —————
+
+function updateMeshStats(mesh: Mesh): void {
+  const el = document.querySelector<HTMLDivElement>('#mesh-stats');
+  if (!el) return;
+  const hu = getLang() === 'hu';
+  el.textContent = `${mesh.elements.length} ${hu ? 'elem' : 'elements'} · ${mesh.nodes.length} ${hu ? 'csomópont' : 'nodes'}`;
+}
+
+/** Lágy fényvillanás a vásznon, amikor új modell/típus érkezik */
+function flashCanvas(): void {
+  const wrap = canvas.parentElement!;
+  wrap.classList.remove('flash');
+  void wrap.offsetWidth;
+  wrap.classList.add('flash');
+}
 
 // ————— Verzió-információ (látható + konzol + DevTools: window.ELEMLAB) —————
 
@@ -665,13 +728,14 @@ function showFatalBanner(message: string): void {
 // ————— Indítás védetten: ha bármelyik lépés elhasal, látható hiba jelenik meg —————
 try {
   setLang('hu');
+  initTheme();
   initTabs();
   placeTabIndicator();
   document.querySelector<HTMLButtonElement>('#mv-toggle')!.addEventListener('click', toggleMVPanel);
   controls.render(MODEL_OPTIONS, { modelId: state.modelId, loadType: state.loadType });
   document.querySelector<HTMLButtonElement>('#anim-btn')!.addEventListener('click', toggleAnimation);
   resizeCanvas();
-  rebuildAndSolve();
+  rebuildAndSolve(true);
 } catch (err) {
   console.error('[ElemLab] inicializálási hiba:', err);
   showFatalBanner(

@@ -13,6 +13,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { Mesh, SolutionResult } from '../fem/types';
 import { stressRgb } from './colormap';
+import { isDarkTheme } from './theme';
 
 export interface WebGLRenderOptions {
   deformationScale: number;
@@ -24,7 +25,7 @@ export interface WebGLRenderOptions {
 }
 
 /** Háttérrács a modell mögött (xy-sík, z = −ε): mérnöki papír-hangulat */
-function makeBackgroundGrid(size: number, divisions: number): THREE.LineSegments {
+function makeBackgroundGrid(size: number, divisions: number, dark: boolean): THREE.LineSegments {
   const pts: number[] = [];
   const half = size / 2;
   const step = size / divisions;
@@ -36,9 +37,9 @@ function makeBackgroundGrid(size: number, divisions: number): THREE.LineSegments
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
   const mat = new THREE.LineBasicMaterial({
-    color: 0x9fb3d1,
+    color: dark ? 0x55688f : 0x9fb3d1,
     transparent: true,
-    opacity: 0.35,
+    opacity: dark ? 0.5 : 0.35,
     depthWrite: false,
   });
   const seg = new THREE.LineSegments(geo, mat);
@@ -64,11 +65,11 @@ export class WebGLRenderer {
       alpha: false,
     });
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#f4f7fb');
 
     // Mérnöki háttérrács a modell síkjával párhuzamosan, kissé mögötte
-    this.gridHelper = makeBackgroundGrid(8, 24);
+    this.gridHelper = makeBackgroundGrid(8, 24, isDarkTheme());
     this.scene.add(this.gridHelper);
+    this.applyTheme();
 
     const aspect = canvas.width / Math.max(canvas.height, 1);
     const viewSize = 1.2;
@@ -92,6 +93,15 @@ export class WebGLRenderer {
       MIDDLE: THREE.MOUSE.DOLLY,
       RIGHT: THREE.MOUSE.PAN,
     };
+  }
+
+  /** Téma átvezetése a jelenet háttérszínére és a háttérrácsra */
+  private applyTheme(): void {
+    const dark = isDarkTheme();
+    this.scene.background = new THREE.Color(dark ? '#0b1424' : '#f4f7fb');
+    const g = this.gridHelper.material as THREE.LineBasicMaterial;
+    g.color.setHex(dark ? 0x55688f : 0x9fb3d1);
+    g.opacity = dark ? 0.5 : 0.35;
   }
 
   /** Egy render-hívás világkoordinátáinak befoglaló mérete */
@@ -123,6 +133,7 @@ export class WebGLRenderer {
   }
 
   render(mesh: Mesh, sol: SolutionResult, opts: WebGLRenderOptions): void {
+    this.applyTheme();
     if (this.meshGroup) {
       this.scene.remove(this.meshGroup);
       this.meshGroup.traverse((o) => {
@@ -203,10 +214,11 @@ export class WebGLRenderer {
 
     // Elemhatárok (wireframe)
     if (opts.showMeshEdges) {
+      const dark = isDarkTheme();
       const edgeMaterial = new THREE.LineBasicMaterial({
-        color: 0x0f172a,
+        color: dark ? 0xe2e8f0 : 0x0f172a,
         transparent: true,
-        opacity: 0.35,
+        opacity: dark ? 0.25 : 0.35,
       });
       const edgeGeometry = new THREE.WireframeGeometry(geometry);
       const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
