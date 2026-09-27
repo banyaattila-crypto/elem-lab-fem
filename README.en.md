@@ -14,7 +14,7 @@ load, load type (point ⇄ distributed), material, mesh density — and watch th
 Von Mises stress heatmap and deformed shape update in real time. The entire
 solver is written in TypeScript and runs **client-side**: no backend, no uploads.
 The footer always shows which version and build you are looking at
-(`v0.13.2 · build …`).
+(`v0.14.0 · build …`).
 
 ## Highlights
 
@@ -103,10 +103,12 @@ KaTeX · Vitest · vite-plugin-pwa
 
 ## Status & roadmap
 
-🟢 **v0.13.2 live**: SVG FEM logo (mesh-wheel, pulsing node) + rich light theme + dark mode — 7 models,
-annotations + reaction values, M/V panel with cursor readout, distributed loads, T6 + WebGL 3D view, MathPanel/NodePanel — 73/73 tests, deployed on Vercel.
-Next: boundary-fitted mesh for an accurate Kt ≈ 3 (currently 4.1 → 5.0 with
-density), 1D bar elements for mixed models, geometry editor, portfolio page.
+🟢 **v0.14.0 live**: 1D frame solver (Euler–Bernoulli beam + truss bar) — 5 frame models
+(cantilever, SS, FF, portal frame, truss bridge) on a dedicated spring-aware 1D solver; N/M/V panel along the
+member layout, Hermite-curved deformed member drawing with σ heat band, member/node inspection (N, M, V, σ_top/bot),
+section & material catalogues (IPE/HEA, S235/S355/Al 6060/Glulam C24/Concrete C25/30); corbel and plate-with-hole
+stay on the CST/T6 path — 94/94 tests (16 new analytic benchmarks on the frame core), typecheck + build OK, Vercel deploy.
+Next: boundary-fitted mesh for an accurate Kt ≈ 3, 1D+2D hybrid models, geometry editor, portfolio page.
 
 ⚠️ *Educational demo — not for engineering decision-making!*
 

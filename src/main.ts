@@ -4,24 +4,33 @@
  */
 
 import './style.css';
-import { buildCantilever } from './models/cantilever';
-import { buildTrussBridge } from './models/trussBridge';
-import { buildPlateWithHole } from './models/plateWithHole';
-import { buildSimplySupported } from './models/simplySupported';
-import { buildPortalFrame } from './models/portalFrame';
-import { buildFixedFixed } from './models/fixedFixed';
 import { buildCorbel } from './models/corbel';
+import { buildPlateWithHole } from './models/plateWithHole';
 import { convertToT6 } from './models/t6convert';
 import { solve } from './fem/solve';
+import {
+  buildFrameCantilever,
+  buildFrameSimplySupported,
+  buildFrameFixedFixed,
+  buildFramePortal,
+  buildFrameTrussBridge,
+  FRAME_MATERIALS,
+  type FrameMaterialKey,
+} from './models/frames';
+import { solveFrame, findFrameBeamAt, findFrameNodeAt } from './fem/frame';
+import type { FrameModel, FrameSolution } from './fem/frame';
 import { Renderer } from './viz/renderer';
 import { WebGLRenderer } from './viz/webgl-renderer';
+import { FrameRenderer } from './viz/frameRenderer';
 import { inspectElement } from './ui/mathpanel';
 import { renderInspection } from './ui/mathpanel-view';
 import { inspectNode } from './ui/nodepanel';
 import { renderNodeInspection } from './ui/nodepanel-view';
+import { inspectFrameElement, renderFrameElementInspection, inspectFrameNode, renderFrameNodeInspection } from './ui/frameinspect';
 import { findElementAt, findNodeAt, screenToWorld } from './viz/picking';
 import { stressGradientCss } from './viz/colormap';
 import { MVPanel } from './viz/diagrams';
+import { FrameMVPanel } from './viz/frame-panel';
 import { ControlsPanel, type ModelOption } from './ui/controls';
 import { APP_VERSION, BUILD_ID } from './version';
 import { lessonFor } from './ui/lessons';
@@ -50,6 +59,19 @@ const MODEL_LABELS: Record<string, Record<Lang, string>> = {
   plateWithHole: { hu: 'Lyukas lemez', en: 'Plate with hole' },
 };
 
+/** Vázmodellek: a frame.ts (1D rúd/rács) megoldót használják */
+const FRAME_MODELS = new Set(['cantilever', 'simplySupported', 'fixedFixed', 'portalFrame', 'trussBridge']);
+
+const FRAME_MATERIAL_LIST: ModelOption[] = Object.entries(FRAME_MATERIALS).map(([key, m]) => ({
+  id: key,
+  label: m.name,
+}));
+
+/** Jelenlegi modell váz-e (frame-megoldó)? */
+function isFrame(): boolean {
+  return FRAME_MODELS.has(state.modelId);
+}
+
 type ParamKey = 'load' | 'density' | 'material' | 'defscale';
 
 const state = {
@@ -57,6 +79,7 @@ const state = {
   load: 1000,
   density: 3,
   material: 'steel' as MaterialKey,
+  frameMaterial: 's235' as FrameMaterialKey,
   defscale: 500,
   selectedElem: null as number | null,
   selectedNode: null as number | null,
@@ -64,7 +87,7 @@ const state = {
   phase: 1,
   engine: 'canvas' as 'canvas' | 'webgl',
   elementType: 'CST' as 'CST' | 'T6',
-  /** Terhelés-típus: pontterhelés vagy elosztott (csak gerenda-modelleknél) */
+  /** Terhelés-típus: pontterhelés vagy elosztott (csak gerenda-modellek nél) */
   loadType: 'point' as 'point' | 'distributed',
 };
 
@@ -73,6 +96,20 @@ let rafId: number | null = null;
 /** Az utolsó megoldás — kattintáskor újraszámolás nélkül újrarajzolunk */
 let lastMesh: Mesh | null = null;
 let lastSol: SolutionResult | null = null;
+
+/** Utolsó váz-megoldás (frame-modellnél) */
+let lastFrameModel: FrameModel | null = null;
+let lastFrameSol: FrameSolution | null = null;
+
+/** A jelenlegi modellhez tartozó anyag-id (váz / lemez) */
+function currentMaterial(): string {
+  return isFrame() ? state.frameMaterial : state.material;
+}
+
+/** Az anyag-választó listája a jelenlegi modellhez */
+function currentMaterialList(): ModelOption[] | undefined {
+  return isFrame() ? FRAME_MATERIAL_LIST : undefined;
+}
 
 // ————— UI váz —————
 
@@ -169,7 +206,9 @@ app.innerHTML = `
 const canvas = document.querySelector<HTMLCanvasElement>('#canvas')!;
 const mvCanvas = document.querySelector<HTMLCanvasElement>('#mv-canvas')!;
 const mvPanel = new MVPanel(mvCanvas);
+const frameMvPanel = new FrameMVPanel(mvCanvas);
 const renderer = new Renderer(canvas);
+const frameRenderer = new FrameRenderer(canvas);
 // WebGL Opcionális: ha nem elérhető (régi VM, kikapcs. hw-gyorsítás,
 // blokkolt GPU), a teljes app ne dőljön el — csak a 3D gomb tiltva.
 let webglRenderer: WebGLRenderer | null = null;
@@ -185,6 +224,22 @@ try {
 
 canvas.addEventListener('click', (ev) => {
   if (panMoved) return; // húzás volt, nem kattintás → nincs kiválasztás
+  if (isFrame()) {
+    if (!lastFrameModel) return;
+    const view = frameRenderer.lastView;
+    if (!view) return;
+    const rect = canvas.getBoundingClientRect();
+    const world = screenToWorld(ev.clientX - rect.left, ev.clientY - rect.top, view);
+    const tol = framePickTolerance(lastFrameModel);
+    state.selectedNode = findFrameNodeAt(lastFrameModel, world.x, world.y, tol);
+    state.selectedElem =
+      state.selectedNode == null ? findFrameBeamAt(lastFrameModel, world.x, world.y, tol) : null;
+    if (state.selectedNode != null || state.selectedElem != null) setTab('inspect');
+    updateFrameMathPanel();
+    updateFrameNodePanel();
+    redraw();
+    return;
+  }
   const view = renderer.lastView;
   if (!view || !lastMesh) return;
   const rect = canvas.getBoundingClientRect();
@@ -201,6 +256,14 @@ canvas.addEventListener('click', (ev) => {
   redraw();
 });
 
+/** Vázkattintás tolerancia: a modell méretétől függő törpe sugár */
+function framePickTolerance(model: FrameModel): number {
+  const xs = model.nodes.map((n) => n.x);
+  const ys = model.nodes.map((n) => n.y);
+  const dia = Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+  return Math.max(dia * 0.03, 0.02);
+}
+
 // ————— Zoom / pan (Canvas 2D) —————
 // Görgő: zoom a mutató körül; húzás: mozgatás; dupla kattintás: nézet visszaállítása.
 canvas.addEventListener('wheel', (ev) => {
@@ -208,7 +271,8 @@ canvas.addEventListener('wheel', (ev) => {
   ev.preventDefault();
   const rect = canvas.getBoundingClientRect();
   const factor = Math.exp(-ev.deltaY * 0.0015);
-  renderer.zoomAt(ev.clientX - rect.left, ev.clientY - rect.top, factor);
+  const active = isFrame() ? frameRenderer : renderer;
+  active.zoomAt(ev.clientX - rect.left, ev.clientY - rect.top, factor);
   redraw();
 }, { passive: false });
 
@@ -230,7 +294,7 @@ window.addEventListener('pointermove', (ev) => {
   panStartX = ev.clientX;
   panStartY = ev.clientY;
   if (Math.abs(dsx) + Math.abs(dsy) > 3) panMoved = true;
-  renderer.panBy(dsx, dsy);
+  (isFrame() ? frameRenderer : renderer).panBy(dsx, dsy);
   redraw();
 });
 window.addEventListener('pointerup', () => {
@@ -238,7 +302,7 @@ window.addEventListener('pointerup', () => {
 });
 canvas.addEventListener('dblclick', () => {
   if (state.engine !== 'canvas') return;
-  renderer.resetView();
+  (isFrame() ? frameRenderer : renderer).resetView();
   redraw();
 });
 
@@ -260,6 +324,23 @@ function estimateTolerance(mesh: Mesh): number {
 const BEAM_MODELS = new Set(['cantilever', 'simplySupported', 'fixedFixed']);
 
 function redraw(): void {
+  // Vázmodell: saját renderer + N/M/V panel (a 3D és a T6 nem érvényes itt)
+  if (isFrame()) {
+    if (!lastFrameModel || !lastFrameSol) return;
+    frameMvPanel.setData(lastFrameModel, lastFrameSol);
+    if (state.engine === 'webgl') {
+      state.engine = 'canvas';
+      setEngineButtons();
+    }
+    frameRenderer.render(lastFrameModel, lastFrameSol, {
+      deformationScale: state.defscale,
+      stressMax: lastFrameSol.maxStress || 1,
+      highlight: state.selectedElem,
+      highlightNode: state.selectedNode,
+      phase: state.phase,
+    });
+    return;
+  }
   if (!lastMesh || !lastSol) return;
   const common = {
     deformationScale: state.defscale,
@@ -353,6 +434,10 @@ function toggleAnimation(): void {
 }
 
 function updateMathPanel(): void {
+  if (isFrame()) {
+    updateFrameMathPanel();
+    return;
+  }
   const el = document.querySelector<HTMLDivElement>('#mathpanel')!;
   const hu = getLang() === 'hu';
   if (state.selectedElem == null || !lastMesh || !lastSol) {
@@ -395,6 +480,51 @@ function updateMathPanel(): void {
   }
 }
 
+/** Váz-rúd vizsgálat panel (frame.ts eredményből) */
+function updateFrameMathPanel(): void {
+  const el = document.querySelector<HTMLDivElement>('#mathpanel')!;
+  const hu = getLang() === 'hu';
+  if (state.selectedElem == null || !lastFrameModel || !lastFrameSol) {
+    el.innerHTML = `<div class="mp-empty">${hu ? '👆 Kattints egy rúdra a canvason — a belső erők és feszültségek jelennek meg.' : '👆 Click a member on the canvas — internal forces and stresses appear.'}</div>`;
+    return;
+  }
+  try {
+    const insp = inspectFrameElement(lastFrameModel, lastFrameSol, state.selectedElem);
+    const n = lastFrameModel.beams.length;
+    el.innerHTML = `
+      <div class="mp-header">
+        <h2>${hu ? 'Rúd-vizsgálat' : 'Member inspection'} #${insp.beamId} <span class="mp-tag">${hu ? 'rúd' : 'member'}</span></h2>
+        <div class="mp-nav">
+          <button id="mp-prev" title="${hu ? 'Előző rúd' : 'Previous member'}">◀</button>
+          <span class="mp-count">${insp.beamId + 1} / ${n}</span>
+          <button id="mp-next" title="${hu ? 'Következő rúd' : 'Next member'}">▶</button>
+          <button id="mp-close" title="${hu ? 'Bezárás' : 'Close'}">✕</button>
+        </div>
+      </div>
+      ${renderFrameElementInspection(insp, getLang())}
+    `;
+    const navId = state.selectedElem ?? 0;
+    document.querySelector<HTMLButtonElement>('#mp-prev')!.addEventListener('click', () => {
+      state.selectedElem = (navId - 1 + n) % n;
+      updateFrameMathPanel();
+      redraw();
+    });
+    document.querySelector<HTMLButtonElement>('#mp-next')!.addEventListener('click', () => {
+      state.selectedElem = (navId + 1) % n;
+      updateFrameMathPanel();
+      redraw();
+    });
+    document.querySelector<HTMLButtonElement>('#mp-close')!.addEventListener('click', () => {
+      state.selectedElem = null;
+      updateFrameMathPanel();
+      redraw();
+    });
+  } catch {
+    state.selectedElem = null;
+    el.innerHTML = `<div class="mp-empty">${hu ? 'Válassz elemet!' : 'Select an element!'}</div>`;
+  }
+}
+
 function resizeCanvas(): void {
   const wrap = canvas.parentElement!;
   canvas.width = wrap.clientWidth;
@@ -407,18 +537,29 @@ window.addEventListener('resize', () => {
   placeTabIndicator();
 });
 
+/** Az M/V ill. N/M/V panel gomb felirata a modell-típus és a nyelv szerint */
+function mvToggleLabel(): string {
+  const hu = getLang() === 'hu';
+  const name = isFrame()
+    ? hu ? 'N/M/V diagram' : 'N/M/V diagrams'
+    : hu ? 'M/V diagram' : 'M/V diagrams';
+  const collapsed = document.querySelector<HTMLDivElement>('#mv-panel')?.classList.contains('collapsed') ?? false;
+  return `${name} ${collapsed ? '▲' : '▼'}`;
+}
+
 function toggleMVPanel(): void {
   const panel = document.querySelector<HTMLDivElement>('#mv-panel')!;
   const btn = document.querySelector<HTMLButtonElement>('#mv-toggle')!;
   const collapsed = panel.classList.toggle('collapsed');
   btn.setAttribute('aria-pressed', String(collapsed));
-  const hu = getLang() === 'hu';
-  btn.textContent = hu
-    ? collapsed ? 'M/V diagram ▲' : 'M/V diagram ▼'
-    : collapsed ? 'M/V diagrams ▲' : 'M/V diagrams ▼';
+  btn.textContent = mvToggleLabel();
 }
 
 function updateNodePanel(): void {
+  if (isFrame()) {
+    updateFrameNodePanel();
+    return;
+  }
   const el = document.querySelector<HTMLDivElement>('#nodepanel')!;
   const hu = getLang() === 'hu';
   if (state.selectedNode == null || !lastMesh || !lastSol) {
@@ -442,6 +583,36 @@ function updateNodePanel(): void {
   });
 }
 
+/** Váz-csomópont vizsgálat panel (frame.ts eredményből) */
+function updateFrameNodePanel(): void {
+  const el = document.querySelector<HTMLDivElement>('#nodepanel')!;
+  const hu = getLang() === 'hu';
+  if (state.selectedNode == null || !lastFrameModel || !lastFrameSol) {
+    el.innerHTML = '';
+    return;
+  }
+  try {
+    const insp = inspectFrameNode(lastFrameModel, lastFrameSol, state.selectedNode);
+    el.innerHTML = `
+      <div class="mp-header">
+        <h2>${hu ? 'Csomópont-vizsgálat' : 'Node inspection'} #${insp.nodeId}</h2>
+        <div class="mp-nav">
+          <button id="np-close" title="${hu ? 'Bezárás' : 'Close'}">✕</button>
+        </div>
+      </div>
+      ${renderFrameNodeInspection(insp, getLang())}
+    `;
+    document.querySelector<HTMLButtonElement>('#np-close')!.addEventListener('click', () => {
+      state.selectedNode = null;
+      updateFrameNodePanel();
+      redraw();
+    });
+  } catch {
+    state.selectedNode = null;
+    updateFrameNodePanel();
+  }
+}
+
 // ————— Vezérlők —————
 
 const controls = new ControlsPanel(
@@ -449,6 +620,8 @@ const controls = new ControlsPanel(
   {
     onModelChange: (id) => {
       state.modelId = id;
+      updateFrameUiState();
+      controls.render(MODEL_OPTIONS, { modelId: state.modelId, loadType: state.loadType, material: currentMaterial() }, currentMaterialList());
       rebuildAndSolve(true);
     },
     onParamChange: (param, value) => {
@@ -463,7 +636,7 @@ const controls = new ControlsPanel(
     onLangChange: (lang) => {
       setLang(lang);
       localizeStatic(lang);
-      controls.render(MODEL_OPTIONS, { modelId: state.modelId, loadType: state.loadType });
+      controls.render(MODEL_OPTIONS, { modelId: state.modelId, loadType: state.loadType, material: currentMaterial() }, currentMaterialList());
       updateLesson(state.modelId, lang);
       rebuildAndSolve();
     },
@@ -474,7 +647,32 @@ function applyParam(key: ParamKey, value: number | string): void {
   if (key === 'load' && typeof value === 'number') state.load = value;
   if (key === 'density' && typeof value === 'number') state.density = value;
   if (key === 'defscale' && typeof value === 'number') state.defscale = value;
-  if (key === 'material' && typeof value === 'string') state.material = value as MaterialKey;
+  if (key === 'material' && typeof value === 'string') {
+    if (isFrame()) state.frameMaterial = value as FrameMaterialKey;
+    else state.material = value as MaterialKey;
+  }
+}
+
+/** Váz-modellnél a 3D (WebGL) és a T6 kapcsoló tiltása */
+function updateFrameUiState(): void {
+  const w = document.querySelector<HTMLButtonElement>('#engine-webgl');
+  const t6 = document.querySelector<HTMLButtonElement>('#elem-t6');
+  if (w) {
+    w.disabled = isFrame();
+    w.title = isFrame()
+      ? 'A 3D nézet csak lemez-modellekhez érhető el'
+      : 'WebGL — folytonos szín, forgatás';
+  }
+  if (t6) {
+    t6.disabled = isFrame();
+    t6.title = isFrame()
+      ? 'A T6 elem csak lemez-modellekhez érhető el'
+      : 'Elem-típus: lineáris CST ⇄ kvadratikus T6';
+  }
+  if (isFrame()) {
+    state.engine = 'canvas';
+    state.elementType = 'CST';
+  }
 }
 
 // ————— Modell-építés a jelenlegi paraméterekkel —————
@@ -487,28 +685,62 @@ function currentMesh(): Mesh {
     loadType: state.loadType,
   };
   switch (state.modelId) {
-    case 'cantilever':
-      return buildCantilever(opts);
-    case 'simplySupported':
-      return buildSimplySupported(opts);
-    case 'fixedFixed':
-      return buildFixedFixed(opts);
-    case 'portalFrame':
-      return buildPortalFrame(opts);
     case 'corbel':
       return buildCorbel(opts);
-    case 'trussBridge':
-      return buildTrussBridge(opts);
     case 'plateWithHole':
       return buildPlateWithHole(opts);
     default:
-      return buildCantilever(opts);
+      return buildCorbel(opts);
+  }
+}
+
+/** Vázmodell-építő a frames.ts katalógusból (a terhelés a load csúszka) */
+function currentFrameModel(): FrameModel {
+  const opts = {
+    loadN: state.load,
+    material: FRAME_MATERIALS[state.frameMaterial] ?? FRAME_MATERIALS.s235!,
+    loadType: state.loadType,
+  };
+  switch (state.modelId) {
+    case 'cantilever':
+      return buildFrameCantilever(opts);
+    case 'simplySupported':
+      return buildFrameSimplySupported(opts);
+    case 'fixedFixed':
+      return buildFrameFixedFixed(opts);
+    case 'portalFrame':
+      return buildFramePortal(opts);
+    case 'trussBridge':
+      return buildFrameTrussBridge(opts);
+    default:
+      return buildFrameCantilever(opts);
   }
 }
 
 function rebuildAndSolve(flash = false): void {
   resizeCanvas();
   if (flash) flashCanvas();
+  // Vázmodell: frame-megoldó + váz-renderer (a sűrűség = mintavételezési sűrűség)
+  if (isFrame()) {
+    const model = currentFrameModel();
+    const sol = solveFrame(model, { samplesPerBeam: state.density });
+    lastFrameModel = model;
+    lastFrameSol = sol;
+    if (state.selectedElem != null && !model.beams.some((b) => b.id === state.selectedElem)) {
+      state.selectedElem = null;
+    }
+    if (state.selectedNode != null && !model.nodes.some((n) => n.id === state.selectedNode)) {
+      state.selectedNode = null;
+    }
+    redraw();
+    updateResultsFrame(sol, getLang());
+    updateLesson(state.modelId, getLang());
+    renderLegend(sol.maxStress || 1, state.defscale);
+    updateFrameStats(model);
+    updateFrameMathPanel();
+    updateFrameNodePanel();
+    return;
+  }
   let mesh = currentMesh();
   if (state.elementType === 'T6') {
     mesh = convertToT6(mesh);
@@ -548,6 +780,22 @@ function updateResults(sol: SolutionResult, lang: Lang): void {
   `;
 }
 
+/** Eredmény-panel váz-modellekhez: elmozdulás + feszültség + belső erők */
+function updateResultsFrame(sol: FrameSolution, lang: Lang): void {
+  const el = document.querySelector<HTMLDivElement>('#results')!;
+  const labels =
+    lang === 'hu'
+      ? { disp: 'Max. elmozdulás', sig: 'Max. feszültség σ', maxM: 'Max. nyomaték M', it: 'CG iterációk' }
+      : { disp: 'Max. displacement', sig: 'Max. stress σ', maxM: 'Max. moment M', it: 'CG iterations' };
+  el.innerHTML = `
+    <div class="result-item"><span>${labels.disp}</span><strong>${formatM(sol.maxDisplacement)}</strong></div>
+    <div class="result-item"><span>${labels.sig}</span><strong>${formatPa(sol.maxStress)}</strong></div>
+    <div class="result-item"><span>${labels.maxM}</span><strong>${formatNm(sol.maxM)}</strong></div>
+    <div class="result-item"><span>${labels.it}</span><strong>${sol.iterations}</strong></div>
+    <div class="result-item"><span title="relatív maradék">res</span><strong>${sol.residual.toExponential(1)}</strong></div>
+  `;
+}
+
 function updateLesson(modelId: string, lang: Lang): void {
   const el = document.querySelector<HTMLDivElement>('#lesson-card')!;
   const lesson = lessonFor(modelId, lang);
@@ -583,12 +831,8 @@ function localizeStatic(lang: Lang): void {
   });
   // M/V panel gomb szövege az összecsukási állapot szerint
   const mvToggle = document.querySelector<HTMLButtonElement>('#mv-toggle');
-  const mvCollapsed = document.querySelector<HTMLDivElement>('#mv-panel')?.classList.contains('collapsed');
   if (mvToggle) {
-    mvToggle.textContent =
-      lang === 'hu'
-        ? mvCollapsed ? 'M/V diagram ▲' : 'M/V diagram ▼'
-        : mvCollapsed ? 'M/V diagrams ▲' : 'M/V diagrams ▼';
+    mvToggle.textContent = mvToggleLabel();
   }
   // modellcímkék frissítése a selectben
   const sel = document.querySelector<HTMLSelectElement>('#model-select');
@@ -615,6 +859,12 @@ function formatPa(v: number): string {
   if (v >= 1e6) return `${(v / 1e6).toFixed(2)} MPa`;
   if (v >= 1e3) return `${(v / 1e3).toFixed(1)} kPa`;
   return `${v.toFixed(1)} Pa`;
+}
+
+function formatNm(v: number): string {
+  if (v >= 1e6) return `${(v / 1e6).toFixed(2)} MNm`;
+  if (v >= 1e3) return `${(v / 1e3).toFixed(2)} kNm`;
+  return `${v.toFixed(1)} Nm`;
 }
 
 // ————— Legenda —————
@@ -722,6 +972,14 @@ function updateMeshStats(mesh: Mesh): void {
   el.textContent = `${mesh.elements.length} ${hu ? 'elem' : 'elements'} · ${mesh.nodes.length} ${hu ? 'csomópont' : 'nodes'}`;
 }
 
+/** Váz-csomópont/rúd számláló */
+function updateFrameStats(model: FrameModel): void {
+  const el = document.querySelector<HTMLDivElement>('#mesh-stats');
+  if (!el) return;
+  const hu = getLang() === 'hu';
+  el.textContent = `${model.beams.length} ${hu ? 'rúd' : 'members'} · ${model.nodes.length} ${hu ? 'csomópont' : 'nodes'}`;
+}
+
 /** Lágy fényvillanás a vásznon, amikor új modell/típus érkezik */
 function flashCanvas(): void {
   const wrap = canvas.parentElement!;
@@ -758,7 +1016,10 @@ try {
   initTabs();
   placeTabIndicator();
   document.querySelector<HTMLButtonElement>('#mv-toggle')!.addEventListener('click', toggleMVPanel);
-  controls.render(MODEL_OPTIONS, { modelId: state.modelId, loadType: state.loadType });
+  controls.render(MODEL_OPTIONS, { modelId: state.modelId, loadType: state.loadType, material: currentMaterial() }, currentMaterialList());
+  updateFrameUiState();
+  const mvBtn = document.querySelector<HTMLButtonElement>('#mv-toggle');
+  if (mvBtn) mvBtn.textContent = mvToggleLabel();
   document.querySelector<HTMLButtonElement>('#anim-btn')!.addEventListener('click', toggleAnimation);
   resizeCanvas();
   rebuildAndSolve(true);

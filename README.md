@@ -10,7 +10,7 @@ Az ElemLab oktatási célú 2D végeselemes szimulátor: kész modelleket variá
 csúszkákkal (terhelés, terhelés-típus, anyag, hálósűrűség), és valós időben látod
 a feszültségmezőt színes hőtérképen, deformált geometriával. A teljes számítási
 motor TypeScriptben, közvetlenül a böngészőben fut — nincs háttérszerver.
-A láblécben mindig látod, melyik verziót és buildet nézed (`v0.13.2 · build …`).
+A láblécben mindig látod, melyik verziót és buildet nézed (`v0.14.0 · build …`).
 
 ## Funkciók
 
@@ -123,10 +123,12 @@ KaTeX · Vitest · vite-plugin-pwa
 
 ## Állapot és tervek
 
-🟢 **v0.13.2 élő**: SVG FEM-logó (háló-kerék, pulzáló csomópont) + gazdag világos téma + éjszakai mód — 7 modell,
-annotációk + reakció-feliratok, M/V panel kurzorral, elosztott terhelés, T6 + WebGL 3D nézet, MathPanel/NodePanel — 73/73 teszt, Vercel deploy.
-Tervek: határkövető háló a pontos Kt-hoz (a Kt jelenleg 4,1 → 5,0 a sűrűséggel),
-1D rúdelem vegyes modellekhez, saját geometriaszerkesztő, portfólióoldal.
+🟢 **v0.14.0 élő**: 1D váz-mag (Euler–Bernoulli rúdelem + rácsrúd) — 5 vázmodell (konzol, SS, FF, portálkeret, rácsos híd)
+ül az előző 7 modellt leváltó, saját rugók+kényszerti 1D szolveren; N/M/V panel a rúdkiosztás mentén, Hermite-görbült
+deformált rúdrajz σ-hőtérképpel, rúd-/csomópont-vizsgálat (N, M, V, σ_top/bot), szelvény- és anyag-katalógus
+(IPE/HEA, S235/S355/Al 6060/Fa C24/Beton C25/30); a corbel és lyukas lemez a CST/T6 pályán maradt —
+94/94 teszt (16 új analitikus benchmark a rúd/rács magon), typecheck + build OK, Vercel deploy.
+Tervek: határkövető háló a pontos Kt-hoz, 1D+2D hibrid modellek, saját geometriaszerkesztő, portfólióoldal.
 
 ⚠️ *Oktatási célú bemutató — mérnöki döntésre nem használható!*
 

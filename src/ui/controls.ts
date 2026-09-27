@@ -37,7 +37,11 @@ export class ControlsPanel {
     this.cb = cb;
   }
 
-  render(modelOptions: ModelOption[], current?: { modelId: string; loadType: 'point' | 'distributed' }): void {
+  render(
+    modelOptions: ModelOption[],
+    current?: { modelId: string; loadType: 'point' | 'distributed'; material?: string },
+    materials?: ModelOption[],
+  ): void {
     this.root.innerHTML = '';
 
     // 1) Modellválasztó
@@ -79,8 +83,8 @@ export class ControlsPanel {
       ),
     );
 
-    // 4) Anyagválasztó
-    const matOptions: ModelOption[] = Object.entries(MATERIALS).map(
+    // 4) Anyagválasztó (modellfüggő: váz → FRAME_MATERIALS, lemez → MATERIALS)
+    const matOptions: ModelOption[] = materials ?? Object.entries(MATERIALS).map(
       ([key, m]) => ({ id: key, label: m.name }),
     );
     const matSel = this.select(
@@ -89,6 +93,9 @@ export class ControlsPanel {
       matOptions,
       (v) => this.cb.onParamChange('material', v),
     );
+    if (current?.material) {
+      (matSel.querySelector('select') as HTMLSelectElement).value = current.material;
+    }
     this.root.appendChild(matSel);
 
     // 5) Deformáció-nagyítás
