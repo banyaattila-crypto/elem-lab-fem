@@ -103,12 +103,26 @@ app.innerHTML = `
         </div>
       </div>
       <div class="mv-panel" id="mv-panel">
+        <div class="mv-header">
+          <button id="mv-toggle" class="mv-toggle" aria-pressed="false">M/V diagram ▼</button>
+        </div>
         <canvas id="mv-canvas"></canvas>
       </div>
-      <section class="lesson-card" id="lesson-card"></section>
-      <section class="results" id="results"></section>
-      <section class="mathpanel" id="mathpanel"></section>
-      <section class="mathpanel nodepanel" id="nodepanel"></section>
+      <nav class="tabs" id="tabs" role="tablist" aria-label="Részletek">
+        <button class="tab active" data-tab="lesson" role="tab" aria-selected="true">Lecke</button>
+        <button class="tab" data-tab="results" role="tab" aria-selected="false">Eredmények</button>
+        <button class="tab" data-tab="inspect" role="tab" aria-selected="false">Vizsgálat</button>
+      </nav>
+      <div class="tab-page" id="page-lesson">
+        <section class="lesson-card" id="lesson-card"></section>
+      </div>
+      <div class="tab-page" id="page-results">
+        <section class="results" id="results"></section>
+      </div>
+      <div class="tab-page" id="page-inspect">
+        <section class="mathpanel" id="mathpanel"></section>
+        <section class="mathpanel nodepanel" id="nodepanel"></section>
+      </div>
     </main>
   </div>
   <footer>
@@ -146,6 +160,7 @@ canvas.addEventListener('click', (ev) => {
   state.selectedNode = findNodeAt(lastMesh, world.x, world.y, tol);
   state.selectedElem =
     state.selectedNode == null ? findElementAt(lastMesh, world.x, world.y) : null;
+  if (state.selectedNode != null || state.selectedElem != null) setTab('inspect');
   updateMathPanel();
   updateNodePanel();
   redraw();
@@ -239,6 +254,28 @@ function redraw(): void {
   }
 }
 
+// ————— Részletek-fülek (Lecke / Eredmények / Vizsgálat) —————
+
+type TabName = 'lesson' | 'results' | 'inspect';
+
+function setTab(name: TabName): void {
+  document.querySelectorAll<HTMLButtonElement>('.tab').forEach((b) => {
+    const active = b.dataset.tab === name;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-selected', String(active));
+  });
+  (['lesson', 'results', 'inspect'] as const).forEach((id) => {
+    const page = document.getElementById(`page-${id}`)!;
+    page.classList.toggle('active', id === name);
+  });
+}
+
+function initTabs(): void {
+  document.querySelectorAll<HTMLButtonElement>('.tab').forEach((b) => {
+    b.addEventListener('click', () => setTab(b.dataset.tab as TabName));
+  });
+}
+
 // ————— Deformáció-animáció —————
 
 function animateFrame(ts: number): void {
@@ -315,13 +352,24 @@ function updateMathPanel(): void {
 function resizeCanvas(): void {
   const wrap = canvas.parentElement!;
   canvas.width = wrap.clientWidth;
-  canvas.height = Math.max(320, Math.min(560, wrap.clientWidth * 0.62));
+  canvas.height = Math.max(360, Math.min(560, wrap.clientWidth * 0.62));
   webglRenderer?.setSize(canvas.width, canvas.height);
 }
 window.addEventListener('resize', () => {
   resizeCanvas();
   rebuildAndSolve();
 });
+
+function toggleMVPanel(): void {
+  const panel = document.querySelector<HTMLDivElement>('#mv-panel')!;
+  const btn = document.querySelector<HTMLButtonElement>('#mv-toggle')!;
+  const collapsed = panel.classList.toggle('collapsed');
+  btn.setAttribute('aria-pressed', String(collapsed));
+  const hu = getLang() === 'hu';
+  btn.textContent = hu
+    ? collapsed ? 'M/V diagram ▲' : 'M/V diagram ▼'
+    : collapsed ? 'M/V diagrams ▲' : 'M/V diagrams ▼';
+}
 
 function updateNodePanel(): void {
   const el = document.querySelector<HTMLDivElement>('#nodepanel')!;
@@ -474,6 +522,25 @@ function localizeStatic(lang: Lang): void {
   } else if (animBtn) {
     animBtn.textContent = lang === 'hu' ? '⏸ Animáció leállítása' : '⏸ Stop animation';
   }
+  // Részletek-fülek fejlécének nyelve
+  const tabLabels: Record<TabName, [string, string]> = {
+    lesson: ['Lecke', 'Lesson'],
+    results: ['Eredmények', 'Results'],
+    inspect: ['Vizsgálat', 'Inspect'],
+  };
+  document.querySelectorAll<HTMLButtonElement>('.tab').forEach((b) => {
+    const pair = tabLabels[b.dataset.tab as TabName];
+    if (pair) b.textContent = pair[lang === 'hu' ? 0 : 1];
+  });
+  // M/V panel gomb szövege az összecsukási állapot szerint
+  const mvToggle = document.querySelector<HTMLButtonElement>('#mv-toggle');
+  const mvCollapsed = document.querySelector<HTMLDivElement>('#mv-panel')?.classList.contains('collapsed');
+  if (mvToggle) {
+    mvToggle.textContent =
+      lang === 'hu'
+        ? mvCollapsed ? 'M/V diagram ▲' : 'M/V diagram ▼'
+        : mvCollapsed ? 'M/V diagrams ▲' : 'M/V diagrams ▼';
+  }
   // modellcímkék frissítése a selectben
   const sel = document.querySelector<HTMLSelectElement>('#model-select');
   if (sel) {
@@ -578,6 +645,8 @@ function showFatalBanner(message: string): void {
 // ————— Indítás védetten: ha bármelyik lépés elhasal, látható hiba jelenik meg —————
 try {
   setLang('hu');
+  initTabs();
+  document.querySelector<HTMLButtonElement>('#mv-toggle')!.addEventListener('click', toggleMVPanel);
   controls.render(MODEL_OPTIONS, { modelId: state.modelId, loadType: state.loadType });
   document.querySelector<HTMLButtonElement>('#anim-btn')!.addEventListener('click', toggleAnimation);
   resizeCanvas();
