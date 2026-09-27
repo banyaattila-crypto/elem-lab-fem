@@ -10,6 +10,9 @@ import {
   computeDimensionLines,
   drawDimensionLines,
   drawInfoPanel,
+  drawSupports,
+  drawLoadArrows,
+  drawDistributedLoads,
 } from './annotate';
 
 /** roundRect — régebbi böngészőkhöz fallback-kel */
@@ -239,6 +242,9 @@ export class Renderer {
       });
       const dims = computeDimensionLines(mesh, worldToScreen, v.scale);
       drawDimensionLines(ctx, dims);
+      drawSupports(ctx, mesh, worldToScreen);
+      drawLoadArrows(ctx, mesh, worldToScreen);
+      drawDistributedLoads(ctx, mesh, worldToScreen);
       drawInfoPanel(ctx, mesh, width);
     }
   }

@@ -10,6 +10,26 @@ export interface Lesson {
 }
 
 export const LESSONS: Record<string, Lesson> = {
+  fixedFixed: {
+    title: {
+      hu: 'Befogás elleni csata: miért 5×-ösen merevebb?',
+      en: 'Fight of the fixities: why 5× stiffer?',
+    },
+    body: {
+      hu: 'A kétvégén befogott gerenda hajlása δ = q·L⁴/(384·E·I) — ötöde az egyszerűen tartotténak! A befogási nyomatékok ellendolgoznak a mező-nyomatékokkal: a gerenda három szakaszon hajlik „fel-le-fel". Válts át az egyszerűen tartottra és nézd meg a különbséget a hőtérképen!',
+      en: 'The fixed–fixed beam deflects δ = q·L⁴/(384·E·I) — one fifth of the simply supported case! The restraint moments counteract the span moments: the beam bends down-up-down in three zones. Switch to the simply supported model and compare heatmaps!',
+    },
+  },
+  corbel: {
+    title: {
+      hu: 'Konzol: hajlítás + nyírás együtt',
+      en: 'Corbel: bending + shear together',
+    },
+    body: {
+      hu: 'A konzolos tartó szárán a terhelés hajlítónyomaték és nyíróerő kombinációját kelti. Kövesd a feszültségáramokat: a terhelés „hideg-meleg" sávjai a sarok mentén folynak a falba. Növeld a terhelést — hol lépi át az anyag határát?',
+      en: 'On the corbel stem the load creates a combination of bending moment and shear. Follow the stress flow: the hot/cold bands run through the corner into the wall. Increase the load — where does the material limit get exceeded first?',
+    },
+  },
   simplySupported: {
     title: {
       hu: 'Miért a középen a legnagyobb a hajlás?',

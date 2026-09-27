@@ -10,6 +10,8 @@ import { buildPlateWithHole } from './models/plateWithHole';
 import { buildSimplySupported } from './models/simplySupported';
 import { buildPortalFrame } from './models/portalFrame';
 import { buildPlateTwoHoles } from './models/plateTwoHoles';
+import { buildFixedFixed } from './models/fixedFixed';
+import { buildCorbel } from './models/corbel';
 import { convertToT6 } from './models/t6convert';
 import { solve } from './fem/solve';
 import { Renderer } from './viz/renderer';
@@ -30,7 +32,9 @@ import type { MaterialKey } from './models/meshgen';
 const MODEL_OPTIONS: ModelOption[] = [
   { id: 'cantilever', label: 'Konzolgerenda' },
   { id: 'simplySupported', label: 'Egyszerűen tartott gerenda' },
+  { id: 'fixedFixed', label: 'Kétvégén befogott gerenda' },
   { id: 'portalFrame', label: 'Portálkeret' },
+  { id: 'corbel', label: 'Konzolos tartó' },
   { id: 'trussBridge', label: 'Rácsos híd' },
   { id: 'plateWithHole', label: 'Lyukas lemez' },
   { id: 'plateTwoHoles', label: 'Kétlyukú lemez' },
@@ -39,7 +43,9 @@ const MODEL_OPTIONS: ModelOption[] = [
 const MODEL_LABELS: Record<string, Record<Lang, string>> = {
   cantilever: { hu: 'Konzolgerenda', en: 'Cantilever beam' },
   simplySupported: { hu: 'Egyszerűen tartott gerenda', en: 'Simply supported beam' },
+  fixedFixed: { hu: 'Kétvégén befogott gerenda', en: 'Fixed–fixed beam' },
   portalFrame: { hu: 'Portálkeret', en: 'Portal frame' },
+  corbel: { hu: 'Konzolos tartó', en: 'Corbel bracket' },
   trussBridge: { hu: 'Rácsos híd', en: 'Truss bridge' },
   plateWithHole: { hu: 'Lyukas lemez', en: 'Plate with hole' },
   plateTwoHoles: { hu: 'Kétlyukú lemez', en: 'Plate with two holes' },
@@ -371,8 +377,12 @@ function currentMesh(): Mesh {
       return buildCantilever(opts);
     case 'simplySupported':
       return buildSimplySupported(opts);
+    case 'fixedFixed':
+      return buildFixedFixed(opts);
     case 'portalFrame':
       return buildPortalFrame(opts);
+    case 'corbel':
+      return buildCorbel(opts);
     case 'trussBridge':
       return buildTrussBridge(opts);
     case 'plateWithHole':

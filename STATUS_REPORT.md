@@ -1,8 +1,8 @@
 # ElemLab — Státuszjelentés
 
 > **Projekt:** Interaktív, oktatási célú végeselem-módszer (FEM) játszótér — web-first PWA
-> **Utolsó frissítés:** 2026-09-26
-> **Státusz:** 🟢 MVP él: szolver + MathPanel (valós idejű elemvizsgálat), 20/20 teszt, build OK, **Vercel deploy kész**
+> **Utolsó frissítés:** 2026-09-27 · **v0.4.0** (verzió + build-ID a látható láblécben)
+> **Státusz:** 🟢 Élő: 8 modell, támasz/terhelés-séma annotáció, elosztott terhelés, MathPanel + NodePanel, **52/52 teszt**, build OK, **Vercel deploy élő** (elem-lab-fem.vercel.app)
 
 ---
 
@@ -111,8 +111,10 @@ elemlab/
 
 ### 4.1 Az első verzióba kerül
 
-- [x] Saját 2D FEM-mag (CST elemek, saját CG-szolver)
-- [x] 3 kész modell: **konzolgerenda**, **rácsos híd**, **lyukas lemez**
+- [x] Saját 2D FEM-mag (CST + T6 elemek, saját CG-szolver)
+- [x] **8 kész modell**: konzolgerenda, egyszerűen tartott gerenda, kétvégén befogott gerenda, portálkeret, konzolos tartó, rácsos híd, lyukas lemez, kétlyukú lemez
+- [x] Támasztípusok: befogás, csukló, görgő (rollerX/rollerY); terheléstípusok: pontterhelés, elosztott terhelés (N/m)
+- [x] Rajz-annotáció: méretvonalak, támasz-szimbólumok, terhelés-nyilak, anyag/keresztmetszet infópanel
 - [x] Csúszkák: terhelő erő, anyag (acél / alumínium / fa), hálósűrűség
 - [x] Von Mises hőtérkép + deformált alak (Canvas 2D) — animáció később
 - [x] Lecke-kártyák (modellenként 1 magyarázó kártya)
@@ -192,3 +194,7 @@ A teljes, képletekkel ellátott specifikáció: **[docs/fem-spec.md](docs/fem-s
 | 2026-09-27 | **T6 kvadratikus elem a magban**: izoparaméteres 6 csomópontú háromszög (t6.ts), 3 pontos Gauss-kvadratúra (súlyok 1/6 — referencia-terület ½!), 12×12 merevség; láncszabály (J⁻¹)ᵀ-alakban; CST→T6 konverzió él-hashinggel, rögzített élek közép-csomópontjai rögzítve; 8 új teszt (merevtest, patch-teszt, hajlás) → **35/35 zöld** |
 | 2026-09-27 | T6 validáció: konzolgerenda hajlásarány az analitikushoz **CST 0,869 → T6 1,036** (13,1% → 3,6% hiba) — a kvadratikus elem a vártnak megfelelően 3,5×-szer pontosabb |
 | 2026-09-27 | **WebGL renderer (Three.js)**: csúcs-színes folytonos hőtérkép (környező elemek VM-átlaga), OrbitControls (forgatás/zoom/pan), T6-nál 4 gyerek-háromszög felbontás; 2D/3D váltó + CST⇄T6 kapcsoló a canvason |
+| 2026-09-27 | **v0.2.0 — Nézet-javítások**: a rajz mindkét tengelyen középre igazítva (a befoglaló a maximálisan deformált alakot is figyelembe veszi); KaTeX-képlet-javítás (a TeX-et már nem escape-eljük → nincs több „&amp;”-szöveg); görgős zoom (mutató körül) + húzásos pan + dupla kattintás = visszaállítás a 2D nézetben; canvas-jelmagyarázat (Viridis sáv, 0/max VM, deformáció-arány) |
+| 2026-09-27 | **v0.2.0 — WebView-független indítás**: WebGL-előkészítés try/catch-ben (GPU/WebView hiányában az app fut tovább 2D-ben), indítási hiba-banner (látható üzenet üres vászon helyett), verzió + build-ID a láblécben/konzolban/DevTools-ban (window.ELEMLAB), cleanupOutdatedCaches |
+| 2026-09-27 | **v0.3.0 — Rajz-annotáció + új modellek**: méretvonalak (hossz, magasság, lyuk-Ø) nyilakkal; infópanel (modell, anyag, E, ν, keresztmetszet); görgő-támasz a FEM-magban (rollerX/rollerY); 3 új modell: egyszerűen tartott gerenda (csukló + görgő), portálkeret (csomópont-összeillesztett szalagháló), kétlyukú lemez; 10 új fizikai teszt (45/45) |
+| 2026-09-27 | **v0.4.0 — Támasz-szimbólumok, terhelés-sémák, elosztott terhelés**: befogás/csukló/görgő ikonok a valós geometrián; pontterhelés-nyíl értékkel + elosztott terhelés sorozat-nyilakkal (q = … N/m) a canvason; **elosztott terhelés a FEM-magban** (bc.distributed, N/m szakaszok); statikai séma sor az infópanelen; 2 új modell: kétvégén befogott gerenda (5× hajlás-arány validálva) + konzolos tartó (L-alak, falba befogva); 8 modell összesen; leckék minden új modellhez; **52/52 teszt** |

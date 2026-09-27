@@ -80,6 +80,14 @@ export function buildTrussBridge(opts: TrussBridgeOptions = {}): Mesh {
     annotation: {
       geom: `Rácsos híd (Warren) · L = ${fmtLen(span)} · ${panels} mező`,
       section: `Öv-keresztmetszet: t×h = ${(thickness * 1000).toFixed(0)}×${(height / 2.4 * 1000).toFixed(0)} mm`,
+      statics: `Statika: 2× alsó-övi csapágyazás + ${fmtForce(loadN)} középen`,
+      supports: [
+        { x: 0, y: 0, kind: 'pin' as const, dir: 'down' as const },
+        { x: span, y: 0, kind: 'rollerY' as const, dir: 'down' as const },
+      ],
+      pointLoads: [
+        { x: span / 2, y: 0, fx: 0, fy: -loadN, label: fmtForce(loadN) },
+      ],
     },
   };
 }
@@ -87,4 +95,9 @@ export function buildTrussBridge(opts: TrussBridgeOptions = {}): Mesh {
 /** Rövid hossz-formázó a metaadatokhoz */
 function fmtLen(m: number): string {
   return m >= 1 ? `${m.toFixed(2)} m` : `${(m * 1000).toFixed(0)} mm`;
+}
+
+/** Erő-formázó a sémához */
+function fmtForce(n: number): string {
+  return Math.abs(n) >= 1000 ? `${(n / 1000).toFixed(1)} kN` : `${n.toFixed(0)} N`;
 }

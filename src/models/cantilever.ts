@@ -64,6 +64,12 @@ export function buildCantilever(opts: CantileverOptions = {}): Mesh {
     annotation: {
       geom: `Konzolgerenda · L = ${fmtLen(L)}`,
       section: `Keresztmetszet: t×H = ${(thickness * 1000).toFixed(0)}×${(H * 1000).toFixed(0)} mm`,
+      statics: `Statika: befogás + ${fmtForce(loadN)} pontterhelés`,
+      supports: [
+        { x: 0, y: 0, kind: 'fixed' as const, dir: 'left' as const },
+        { x: 0, y: H, kind: 'fixed' as const, dir: 'left' as const },
+      ],
+      pointLoads: [{ x: L, y: H / 2, fx: 0, fy: -loadN, label: fmtForce(loadN) }],
     },
   };
 }
@@ -71,6 +77,11 @@ export function buildCantilever(opts: CantileverOptions = {}): Mesh {
 /** Rövid hossz-formázó a metaadatokhoz */
 function fmtLen(m: number): string {
   return m >= 1 ? `${m.toFixed(2)} m` : `${(m * 1000).toFixed(0)} mm`;
+}
+
+/** Erő-formázó a sémához */
+function fmtForce(n: number): string {
+  return Math.abs(n) >= 1000 ? `${(n / 1000).toFixed(1)} kN` : `${n.toFixed(0)} N`;
 }
 
 /** Analitikus hajlás összehasonlításhoz: δ = P·L³/(3·E·I), I = t·H³/12 */

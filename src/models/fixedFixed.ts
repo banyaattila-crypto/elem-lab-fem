@@ -1,17 +1,17 @@
 /**
- * 4. modell: Egyszerűen tartott gerenda (csukló + görgő)
- * Alsó két sarkán támaszva, a felső élen egyenletesen elosztott terheléssel.
+ * 7. modell: Kétvégén befogott gerenda
+ * Mindkét végén befogadva, felső élén elosztott terheléssel.
  * Klasszikus validációs eset:
- *   δ_mid = 5·q·L⁴ / (384·E·I), ahol q·L = P
+ *   δ_mid = q·L⁴ / (384·E·I) = P·L³ / (384·E·I)  (q·L = P)
  *
- * A bal alsó sarok csukló (mindkét DOF rögzített), a jobb alsó sarok görgő
- * (csak Y rögzített → a vízszintes duzzadás/zsugorodás szabad).
+ * Összehasonlítás az egyszerűen tartottal: a befogások miatt
+ * a hajlás 5× kisebb — a nyomatékviselés megoszlik a mezők között.
  */
 
 import type { Mesh } from '../fem/types';
 import { MATERIALS, structuredGrid, type MaterialKey } from './meshgen';
 
-export interface SimplySupportedOptions {
+export interface FixedFixedOptions {
   /** Gerenda fesztávja [m] */
   L?: number;
   /** Gerenda magassága [m] */
@@ -19,13 +19,13 @@ export interface SimplySupportedOptions {
   /** Lemezvastagság [m] */
   thickness?: number;
   material?: MaterialKey;
-  /** Terhelő erő a középpontban [N] */
+  /** Összes elosztott terhelés [N] (q·L) */
   loadN?: number;
   /** Háló finomság (1 = durva, 5 = finom) */
   density?: number;
 }
 
-export function buildSimplySupported(opts: SimplySupportedOptions = {}): Mesh {
+export function buildFixedFixed(opts: FixedFixedOptions = {}): Mesh {
   const L = opts.L ?? 4;
   const H = opts.H ?? 0.4;
   const thickness = opts.thickness ?? 0.02;
@@ -39,19 +39,12 @@ export function buildSimplySupported(opts: SimplySupportedOptions = {}): Mesh {
   const grid = structuredGrid(L, H, nx, ny);
 
   const fixed: number[] = [];
-  const rollerY: number[] = [];
-
   for (const n of grid.nodes) {
     const atLeft = Math.abs(n.x) < 1e-9;
     const atRight = Math.abs(n.x - L) < 1e-9;
-    const atBottom = Math.abs(n.y) < 1e-9;
-
-    if (atBottom && atLeft) fixed.push(n.id);
-    if (atBottom && atRight) rollerY.push(n.id);
+    if (atLeft || atRight) fixed.push(n.id);
   }
 
-  // Elosztott terhelés a felső élen (lefelé nyomó, qy < 0);
-  // a teljes erő qy·L = −loadN, azaz a csúszka értéke marad a terhelés.
   const qy = -loadN / L; // N/m
   const distributed = [{ x1: 0, y1: H, x2: L, y2: H, qy }];
 
@@ -60,15 +53,17 @@ export function buildSimplySupported(opts: SimplySupportedOptions = {}): Mesh {
     elements: grid.elements,
     material: { ...material },
     thickness,
-    bc: { fixed, rollerY, loads: {}, distributed },
+    bc: { fixed, loads: {}, distributed },
     type: 'plane-stress',
     annotation: {
-      geom: `Egyszerűen tartott gerenda · L = ${fmtLen(L)}`,
+      geom: `Kétvégén befogott gerenda · L = ${fmtLen(L)}`,
       section: `Keresztmetszet: t×H = ${(thickness * 1000).toFixed(0)}×${(H * 1000).toFixed(0)} mm`,
-      statics: `Statika: csukló + görgő + q = ${fmtForce(Math.abs(qy))}/m elosztott`,
+      statics: `Statika: 2× befogás + q = ${fmtForce(Math.abs(qy))}/m elosztott`,
       supports: [
-        { x: 0, y: 0, kind: 'pin' as const, dir: 'down' as const },
-        { x: L, y: 0, kind: 'rollerY' as const, dir: 'down' as const },
+        { x: 0, y: 0, kind: 'fixed' as const, dir: 'left' as const },
+        { x: 0, y: H, kind: 'fixed' as const, dir: 'left' as const },
+        { x: L, y: 0, kind: 'fixed' as const, dir: 'right' as const },
+        { x: L, y: H, kind: 'fixed' as const, dir: 'right' as const },
       ],
       distLoads: [{ x1: 0, y1: H, x2: L, y2: H, qy }],
     },
@@ -86,11 +81,10 @@ function fmtForce(n: number): string {
 }
 
 /**
- * Analitikus hajlás egyenletes elosztott terhelésre:
- *   δ_mid = 5·q·L⁴ / (384·E·I), ahol q = P/L → δ = 5·P·L³ / (384·E·I)
- * I = t·H³/12
+ * Analitikus hajlás kétvégén befogott gerendán, egyenletes q mellett:
+ *   δ_mid = q·L⁴/(384·E·I), q = P/L → δ = P·L³/(384·E·I); I = t·H³/12
  */
-export function simplySupportedAnalyticalDeflection(
+export function fixedFixedAnalyticalDeflection(
   P: number,
   L: number,
   H: number,
@@ -98,5 +92,5 @@ export function simplySupportedAnalyticalDeflection(
   E: number,
 ): number {
   const I = (thickness * H * H * H) / 12;
-  return (5 * P * L * L * L) / (384 * E * I);
+  return (P * L * L * L) / (384 * E * I);
 }

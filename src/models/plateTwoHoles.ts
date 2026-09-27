@@ -94,6 +94,7 @@ export function buildPlateTwoHoles(opts: PlateTwoHolesOptions = {}): Mesh {
     annotation: {
       geom: `Kétlyukú lemez · ${fmtLen(W)}×${fmtLen(H)}`,
       section: `Lemez t = ${(thickness * 1000).toFixed(1)} mm · 2× d = ${(2 * holeR * 1000).toFixed(0)} mm`,
+      statics: `Statika: egyirányú húzás σ₀ = ${fmtStress(sigma0)} · rögzített sarok`,
       holes: [
         { cx, cy: cy1, r: holeR },
         { cx, cy: cy2, r: holeR },
@@ -105,6 +106,13 @@ export function buildPlateTwoHoles(opts: PlateTwoHolesOptions = {}): Mesh {
 /** Rövid hossz-formázó a metaadatokhoz */
 function fmtLen(m: number): string {
   return m >= 1 ? `${m.toFixed(2)} m` : `${(m * 1000).toFixed(0)} mm`;
+}
+
+/** Feszültség-formázó a sémához */
+function fmtStress(pa: number): string {
+  const a = Math.abs(pa);
+  if (a >= 1e6) return `${(pa / 1e6).toFixed(2)} MPa`;
+  return `${(pa / 1e3).toFixed(0)} kPa`;
 }
 
 /** Névleges nettó feszültség a lyuk-soron átmenő keresztmetszeten */

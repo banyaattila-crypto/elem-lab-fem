@@ -122,6 +122,14 @@ export function buildPortalFrame(opts: PortalFrameOptions = {}): Mesh {
     annotation: {
       geom: `Portálkeret · L = ${fmtLen(span)} · oszlop h = ${fmtLen(colH)}`,
       section: `Oszlop: ${fmtLen(colW)}×${fmtLen(colH)} · gerenda: ${fmtLen(span)}×${fmtLen(beamH)}`,
+      statics: `Statika: 2× befogás + ${fmtForce(loadN)} a gerenda közepén`,
+      supports: [
+        { x: 0, y: 0, kind: 'fixed' as const, dir: 'left' as const },
+        { x: span, y: 0, kind: 'fixed' as const, dir: 'right' as const },
+      ],
+      pointLoads: [
+        { x: span / 2, y: colH + beamH, fx: 0, fy: -loadN, label: fmtForce(loadN) },
+      ],
     },
   };
 }
@@ -129,4 +137,9 @@ export function buildPortalFrame(opts: PortalFrameOptions = {}): Mesh {
 /** Rövid hossz-formázó a metaadatokhoz */
 function fmtLen(m: number): string {
   return m >= 1 ? `${m.toFixed(2)} m` : `${(m * 1000).toFixed(0)} mm`;
+}
+
+/** Erő-formázó a sémához */
+function fmtForce(n: number): string {
+  return Math.abs(n) >= 1000 ? `${(n / 1000).toFixed(1)} kN` : `${n.toFixed(0)} N`;
 }

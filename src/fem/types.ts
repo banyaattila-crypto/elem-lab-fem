@@ -49,6 +49,8 @@ export interface BoundaryConditions {
   rollerX?: number[];
   /** Csak függőleges (Y) rögzítés — függőleges támasz/görgő (opcionális) */
   rollerY?: number[];
+  /** Elosztott terhelés szakaszokon: qy [N/m] (a +y irány pozitív), a lemez vastagságával szorzódik */
+  distributed?: Array<{ x1: number; y1: number; x2: number; y2: number; qy: number }>;
 }
 
 /** 2D háló síkfeszültség- vagy síkfeszültség-állapottal */
@@ -73,8 +75,22 @@ export interface MeshAnnotation {
   section?: string;
   /** Geometria-információ, pl. „L = 2 m · konzol" */
   geom?: string;
+  /** Statikai séma leírás, pl. „befogás + P pontterhelés" */
+  statics?: string;
   /** Körlyukak (Ø méretvonalhoz) */
   holes?: Array<{ cx: number; cy: number; r: number }>;
+  /** Támasz-szimbólumok */
+  supports?: Array<{
+    x: number;
+    y: number;
+    kind: 'fixed' | 'pin' | 'rollerX' | 'rollerY';
+    /** a szimbólum iránya (a szerkezet felé mutat) */
+    dir?: 'up' | 'down' | 'left' | 'right';
+  }>;
+  /** Pontterhelés-nyilak (séma-jelleg, nem node-on-node) */
+  pointLoads?: Array<{ x: number; y: number; fx: number; fy: number; label?: string }>;
+  /** Elosztott terhelés sémája */
+  distLoads?: Array<{ x1: number; y1: number; x2: number; y2: number; qy: number }>;
 }
 
 /** Egy elem feszültségállapota */
