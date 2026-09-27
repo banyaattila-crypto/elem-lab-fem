@@ -14,8 +14,9 @@ import {
   elementStress,
   vonMises,
 } from './cst';
+import { t6Constitutive, t6Geometry, t6Stress } from './t6';
 import { conjugateGradient, SparseMatrix } from './linalg';
-import type { ElementStress, Mesh, SolutionResult, Vec2 } from './types';
+import type { ElementStress, Mesh, Node, SolutionResult, Vec2 } from './types';
 
 /**
  * Kibocsátja a rögzített DOF-okat: csak a szabad DOF-okra épít
@@ -77,25 +78,35 @@ export function solve(mesh: Mesh, tol = 1e-10): SolutionResult {
     if (mag > maxDisplacement) maxDisplacement = mag;
   }
 
-  // Elemi feszültségek: σ = D·B·uₑ
+  // Elemi feszültségek: σ = D·B·uₑ (CST) vagy Gauss-pont-átlag (T6)
   const stresses = new Map<number, ElementStress>();
-  const D = constitutiveMatrix(mesh.material, mesh.type);
+  const isT6 = (mesh.elementType ?? 'CST') === 'T6';
+  const D = isT6
+    ? t6Constitutive(mesh.material, mesh.type)
+    : constitutiveMatrix(mesh.material, mesh.type);
   let maxVonMises = 0;
 
   for (const elem of mesh.elements) {
-    const [p1, p2, p3] = elementNodes(mesh.nodes, elem);
-    const g = elementGeometry(p1, p2, p3);
-    const uElem = [
-      uFull[2 * elem.nodes[0]!]!,
-      uFull[2 * elem.nodes[0]! + 1]!,
-      uFull[2 * elem.nodes[1]!]!,
-      uFull[2 * elem.nodes[1]! + 1]!,
-      uFull[2 * elem.nodes[2]!]!,
-      uFull[2 * elem.nodes[2]! + 1]!,
-    ];
-    const { sigmaX, sigmaY, tauXY } = elementStress(g, D, uElem);
-    const vm = vonMises(sigmaX, sigmaY, tauXY);
-    stresses.set(elem.id, { sigmaX, sigmaY, tauXY, vonMises: vm });
+    const uElem: number[] = [];
+    for (const nid of elem.nodes) {
+      uElem.push(uFull[2 * nid]!, uFull[2 * nid + 1]!);
+    }
+    let sx: number;
+    let sy: number;
+    let tx: number;
+    if (isT6) {
+      const pts = elem.nodes.map((nid) => mesh.nodes[nid]!) as [
+        Node, Node, Node, Node, Node, Node,
+      ];
+      const g = t6Geometry(pts);
+      ({ sigmaX: sx, sigmaY: sy, tauXY: tx } = t6Stress(g, D, uElem));
+    } else {
+      const [p1, p2, p3] = elementNodes(mesh.nodes, elem as Parameters<typeof elementNodes>[1]);
+      const g = elementGeometry(p1, p2, p3);
+      ({ sigmaX: sx, sigmaY: sy, tauXY: tx } = elementStress(g, D, uElem));
+    }
+    const vm = vonMises(sx, sy, tx);
+    stresses.set(elem.id, { sigmaX: sx, sigmaY: sy, tauXY: tx, vonMises: vm });
     if (vm > maxVonMises) maxVonMises = vm;
   }
 

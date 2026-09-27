@@ -2,7 +2,9 @@
  * Globális merevségi mátrix összeállítása és a K·u = f rendszer felírása.
  */
 
+import type { Node } from './types';
 import { elementStiffness, elementGeometry, elementNodes, constitutiveMatrix } from './cst';
+import { t6Geometry, t6Stiffness, t6Constitutive } from './t6';
 import { SparseMatrix } from './linalg';
 import type { Mesh, Vec2 } from './types';
 
@@ -30,25 +32,48 @@ export function assemble(mesh: Mesh): AssembledSystem {
   const triplets: Array<[number, number, number]> = [];
   const f = new Float64Array(n);
 
-  const D = constitutiveMatrix(mesh.material, mesh.type);
+  const isT6 = (mesh.elementType ?? 'CST') === 'T6';
+  const D = isT6
+    ? t6Constitutive(mesh.material, mesh.type)
+    : constitutiveMatrix(mesh.material, mesh.type);
 
   for (const elem of mesh.elements) {
-    const [p1, p2, p3] = elementNodes(mesh.nodes, elem);
-    const g = elementGeometry(p1, p2, p3);
-    const ke = elementStiffness(g, D, mesh.thickness);
+    if (isT6) {
+      // ————— T6: 6 csomópont, 12 DOF —————
+      const pts = elem.nodes.map((nid) => mesh.nodes[nid]!) as [
+        Node, Node, Node, Node, Node, Node,
+      ];
+      const g = t6Geometry(pts);
+      const ke = t6Stiffness(g, D, mesh.thickness);
 
-    // A 3 csomópont DOF-jai sorrendben: [n1x, n1y, n2x, n2y, n3x, n3y]
-    const dofs: number[] = [];
-    for (const nodeId of elem.nodes) {
-      const [dx, dy] = nodeDofs(nodeId);
-      dofs.push(dx, dy);
-    }
+      const dofs: number[] = [];
+      for (const nodeId of elem.nodes) {
+        const [dx, dy] = nodeDofs(nodeId);
+        dofs.push(dx, dy);
+      }
+      for (let i = 0; i < 12; i++) {
+        for (let j = 0; j < 12; j++) {
+          const v = ke[i]![j]!;
+          if (v !== 0) triplets.push([dofs[i]!, dofs[j]!, v]);
+        }
+      }
+    } else {
+      // ————— CST: 3 csomópont, 6 DOF —————
+      const [p1, p2, p3] = elementNodes(mesh.nodes, elem);
+      const g = elementGeometry(p1, p2, p3);
+      const ke = elementStiffness(g, D, mesh.thickness);
 
-    for (let i = 0; i < 6; i++) {
-      for (let j = 0; j < 6; j++) {
-        const v = ke[i]![j]!;
-        if (v !== 0) {
-          triplets.push([dofs[i]!, dofs[j]!, v]);
+      const dofs: number[] = [];
+      for (const nodeId of elem.nodes) {
+        const [dx, dy] = nodeDofs(nodeId);
+        dofs.push(dx, dy);
+      }
+      for (let i = 0; i < 6; i++) {
+        for (let j = 0; j < 6; j++) {
+          const v = ke[i]![j]!;
+          if (v !== 0) {
+            triplets.push([dofs[i]!, dofs[j]!, v]);
+          }
         }
       }
     }

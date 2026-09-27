@@ -7,8 +7,10 @@ import './style.css';
 import { buildCantilever } from './models/cantilever';
 import { buildTrussBridge } from './models/trussBridge';
 import { buildPlateWithHole } from './models/plateWithHole';
+import { convertToT6 } from './models/t6convert';
 import { solve } from './fem/solve';
 import { Renderer } from './viz/renderer';
+import { WebGLRenderer } from './viz/webgl-renderer';
 import { inspectElement } from './ui/mathpanel';
 import { renderInspection } from './ui/mathpanel-view';
 import { inspectNode } from './ui/nodepanel';
@@ -45,6 +47,8 @@ const state = {
   selectedNode: null as number | null,
   animating: false,
   phase: 1,
+  engine: 'canvas' as 'canvas' | 'webgl',
+  elementType: 'CST' as 'CST' | 'T6',
 };
 
 let rafId: number | null = null;
@@ -74,6 +78,11 @@ app.innerHTML = `
           <span>max</span>
         </div>
         <button id="anim-btn" class="anim-btn" aria-pressed="false">▶ Animáció indítása</button>
+        <div class="engine-switch">
+          <button id="engine-canvas" class="active" title="Canvas 2D — gyors, 2D">2D</button>
+          <button id="engine-webgl" title="WebGL — folytonos szín, forgatás">3D</button>
+          <button id="elem-t6" title="Elem-típus: lineáris CST ⇄ kvadratikus T6">CST</button>
+        </div>
       </div>
       <section class="lesson-card" id="lesson-card"></section>
       <section class="results" id="results"></section>
@@ -88,6 +97,7 @@ app.innerHTML = `
 
 const canvas = document.querySelector<HTMLCanvasElement>('#canvas')!;
 const renderer = new Renderer(canvas);
+const webglRenderer = new WebGLRenderer(canvas);
 
 // ————— Elemkiválasztás + matematikai panel —————
 
@@ -123,14 +133,19 @@ function estimateTolerance(mesh: Mesh): number {
 
 function redraw(): void {
   if (!lastMesh || !lastSol) return;
-  renderer.render(lastMesh, lastSol, {
+  const common = {
     deformationScale: state.defscale,
     stressMax: lastSol.maxVonMises || 1,
     showMeshEdges: true,
     highlight: state.selectedElem,
     highlightNode: state.selectedNode,
     phase: state.phase,
-  });
+  };
+  if (state.engine === 'webgl') {
+    webglRenderer.render(lastMesh, lastSol, common);
+  } else {
+    renderer.render(lastMesh, lastSol, common);
+  }
 }
 
 // ————— Deformáció-animáció —————
@@ -210,6 +225,7 @@ function resizeCanvas(): void {
   const wrap = canvas.parentElement!;
   canvas.width = wrap.clientWidth;
   canvas.height = Math.max(320, Math.min(560, wrap.clientWidth * 0.62));
+  webglRenderer.setSize(canvas.width, canvas.height);
 }
 window.addEventListener('resize', () => {
   resizeCanvas();
@@ -293,7 +309,10 @@ function currentMesh(): Mesh {
 
 function rebuildAndSolve(): void {
   resizeCanvas();
-  const mesh = currentMesh();
+  let mesh = currentMesh();
+  if (state.elementType === 'T6') {
+    mesh = convertToT6(mesh);
+  }
   const sol = solve(mesh);
   lastMesh = mesh;
   lastSol = sol;
@@ -389,6 +408,35 @@ function renderLegend(): void {
 // ————— Indítás —————
 
 import { getLang } from './ui/i18n';
+
+// ————— Motor- és elem-típus váltók —————
+
+document.querySelector<HTMLButtonElement>('#engine-canvas')!.addEventListener('click', () => {
+  state.engine = 'canvas';
+  setEngineButtons();
+  redraw();
+});
+document.querySelector<HTMLButtonElement>('#engine-webgl')!.addEventListener('click', () => {
+  state.engine = 'webgl';
+  setEngineButtons();
+  redraw();
+});
+
+function setEngineButtons(): void {
+  const c = document.querySelector<HTMLButtonElement>('#engine-canvas')!;
+  const w = document.querySelector<HTMLButtonElement>('#engine-webgl')!;
+  c.classList.toggle('active', state.engine === 'canvas');
+  w.classList.toggle('active', state.engine === 'webgl');
+  const t6 = document.querySelector<HTMLButtonElement>('#elem-t6')!;
+  t6.textContent = state.elementType;
+  t6.classList.toggle('active', state.elementType === 'T6');
+}
+
+document.querySelector<HTMLButtonElement>('#elem-t6')!.addEventListener('click', () => {
+  state.elementType = state.elementType === 'CST' ? 'T6' : 'CST';
+  setEngineButtons();
+  rebuildAndSolve();
+});
 
 setLang('hu');
 controls.render(MODEL_OPTIONS);

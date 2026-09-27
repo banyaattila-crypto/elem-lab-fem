@@ -20,6 +20,8 @@
   },
   "dependencies": {
     "@types/katex": "^0.16.8",
-    "katex": "^0.18.9"
+    "@types/three": "^0.186.0",
+    "katex": "^0.18.9",
+    "three": "^0.186.1"
   }
 }

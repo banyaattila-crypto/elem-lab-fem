@@ -89,6 +89,7 @@ export class Renderer {
     };
 
     for (const elem of mesh.elements) {
+      // Mindkét elem-típusnál a 3 SAROK csomópont adja a rajzolható háromszöget
       const [i1, i2, i3] = elem.nodes;
       const p1 = mesh.nodes[i1]!;
       const p2 = mesh.nodes[i2]!;
@@ -113,6 +114,17 @@ export class Renderer {
         ctx.strokeStyle = 'rgba(15,23,42,0.35)';
         ctx.lineWidth = 0.5;
         ctx.stroke();
+        // T6: az oldalközép-csomópontokat is bemutatjuk (rácsellenőrzés)
+        if ((mesh.elementType ?? 'CST') === 'T6' && elem.nodes.length >= 6) {
+          ctx.fillStyle = 'rgba(226,232,240,0.5)';
+          for (let m = 3; m < Math.min(6, elem.nodes.length); m++) {
+            const pm = mesh.nodes[elem.nodes[m]!]!;
+            const sm = tx(pm.x, pm.y, pm.id);
+            ctx.beginPath();
+            ctx.arc(sm.sx, sm.sy, 1.2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
       }
     }
 

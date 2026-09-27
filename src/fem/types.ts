@@ -17,13 +17,14 @@ export interface Node {
 }
 
 /**
- * Három csomópontú háromszögelem (CST).
- * A csomópont-id sorrendje óramutató járásával ellentétes (CCW) —
- * ez garantálja a pozitív területet és a jól kondicionált mátrixot.
+ * Háromszögelem.
+ * CST: 3 csomópont (sorrend CCW — pozitív terület).
+ * T6: 6 csomópont — 3 sarok + 3 oldalközép: [a, b, c, m_ab, m_bc, m_ca],
+ *     ahol N4 = m_ab (1-2 él), N5 = m_bc (2-3 él), N6 = m_ca (3-1 él).
  */
 export interface Element {
   id: number;
-  nodes: [number, number, number];
+  nodes: [number, number, number, ...number[]];
 }
 
 /** Lineárisan rugalmas anyag */
@@ -56,6 +57,8 @@ export interface Mesh {
   bc: BoundaryConditions;
   /** síkfeszültség (vékony lemez) vagy síkdeformáció (vastag test) */
   type: 'plane-stress' | 'plane-strain';
+  /** Elem-típus: CST (lineáris, 3 csomópont) vagy T6 (kvadratikus, 6 csomópont) */
+  elementType?: 'CST' | 'T6';
 }
 
 /** Egy elem feszültségállapota */
