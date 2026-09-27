@@ -226,17 +226,17 @@ input[type='range'] {
   width: 46px;
   height: 46px;
   flex: none;
-  display: grid;
-  place-items: center;
-  border-radius: 15px;
-  background: var(--grad-brand);
-  color: #ffffff;
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 1.5rem;
-  font-weight: 700;
-  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.38);
+  display: block;
   position: relative;
+  border-radius: 15px;
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.38);
+  transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease);
+}
+
+.brand-mark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .brand-mark::after {
@@ -244,8 +244,40 @@ input[type='range'] {
   position: absolute;
   inset: 2px;
   border-radius: 13px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.28);
   pointer-events: none;
+}
+
+.brand:hover .brand-mark {
+  transform: translateY(-1px) rotate(-2deg);
+  box-shadow: 0 12px 28px rgba(124, 58, 237, 0.5);
+}
+
+/* Lágy pulzáló gyűrű a központi csomópont körül */
+.brand-mark .bm-ring {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: bmPulse 3.4s var(--ease-slow) infinite;
+}
+
+@keyframes bmPulse {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+  12% {
+    opacity: 0.55;
+    transform: scale(0.96);
+  }
+  45% {
+    opacity: 0.12;
+    transform: scale(1.08);
+  }
+  75% {
+    opacity: 0.45;
+    transform: scale(1.02);
+  }
 }
 
 .brand-text h1 {

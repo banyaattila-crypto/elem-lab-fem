@@ -10,7 +10,7 @@ Az ElemLab oktatási célú 2D végeselemes szimulátor: kész modelleket variá
 csúszkákkal (terhelés, terhelés-típus, anyag, hálósűrűség), és valós időben látod
 a feszültségmezőt színes hőtérképen, deformált geometriával. A teljes számítási
 motor TypeScriptben, közvetlenül a böngészőben fut — nincs háttérszerver.
-A láblécben mindig látod, melyik verziót és buildet nézed (`v0.13.1 · build …`).
+A láblécben mindig látod, melyik verziót és buildet nézed (`v0.13.2 · build …`).
 
 ## Funkciók
 
@@ -123,8 +123,8 @@ KaTeX · Vitest · vite-plugin-pwa
 
 ## Állapot és tervek
 
-🟢 **v0.13.1 élő**: gazdag, kék–lila–rózsaszín világos téma + éjszakai mód — 7 modell, annotációk + reakció-feliratok,
-M/V panel kurzorral, elosztott terhelés, T6 + WebGL 3D nézet, MathPanel/NodePanel — 73/73 teszt, Vercel deploy.
+🟢 **v0.13.2 élő**: SVG FEM-logó (háló-kerék, pulzáló csomópont) + gazdag világos téma + éjszakai mód — 7 modell,
+annotációk + reakció-feliratok, M/V panel kurzorral, elosztott terhelés, T6 + WebGL 3D nézet, MathPanel/NodePanel — 73/73 teszt, Vercel deploy.
 Tervek: határkövető háló a pontos Kt-hoz (a Kt jelenleg 4,1 → 5,0 a sűrűséggel),
 1D rúdelem vegyes modellekhez, saját geometriaszerkesztő, portfólióoldal.
 

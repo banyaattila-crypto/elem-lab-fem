@@ -81,7 +81,33 @@ app.innerHTML = `
   <div class="aurora" aria-hidden="true"><i class="ab ab-1"></i><i class="ab ab-2"></i><i class="ab ab-3"></i></div>
   <header class="topbar">
     <div class="brand">
-      <span class="brand-mark" aria-hidden="true">E</span>
+      <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true">
+        <defs>
+          <linearGradient id="bm-grad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#2f6be6"/>
+            <stop offset="0.55" stop-color="#7c3aed"/>
+            <stop offset="1" stop-color="#c026d3"/>
+          </linearGradient>
+          <radialGradient id="bm-glow" cx="50%" cy="40%" r="60%">
+            <stop offset="0" stop-color="#ffffff" stop-opacity="0.3"/>
+            <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <rect x="1" y="1" width="46" height="46" rx="14" fill="url(#bm-grad)"/>
+        <rect x="1" y="1" width="46" height="46" rx="14" fill="url(#bm-glow)"/>
+        <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9">
+          <path d="M12 14 L23 22 L12 29 M23 22 L30 11 M23 22 L36 26 M23 22 L24 34" opacity="0.92"/>
+          <path d="M12 14 L30 11 L36 26 L24 34 L12 29 Z" opacity="0.6"/>
+        </g>
+        <circle cx="12" cy="14" r="1.6" fill="#ffffff"/>
+        <circle cx="30" cy="11" r="1.6" fill="#ffffff"/>
+        <circle cx="36" cy="26" r="1.6" fill="#ffffff"/>
+        <circle cx="24" cy="34" r="1.6" fill="#ffffff"/>
+        <circle cx="12" cy="29" r="1.6" fill="#ffffff"/>
+        <circle cx="23" cy="22" r="3" fill="#ffffff"/>
+        <circle cx="23" cy="22" r="6" fill="none" stroke="#ffffff" opacity="0.45"/>
+        <circle class="bm-ring" cx="23" cy="22" r="7.5" fill="none" stroke="#ffffff" stroke-width="1.4"/>
+      </svg>
       <div class="brand-text">
         <h1>ElemLab</h1>
         <p class="subtitle" id="subtitle">Végeselem-módszer játszótér</p>
