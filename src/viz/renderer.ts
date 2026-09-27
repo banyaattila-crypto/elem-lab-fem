@@ -14,6 +14,7 @@ import {
   drawLoadArrows,
   drawDistributedLoads,
 } from './annotate';
+import { drawDiagrams } from './diagrams';
 
 /** roundRect — régebbi böngészőkhöz fallback-kel */
 function roundRectPath(
@@ -53,6 +54,8 @@ export interface RenderOptions {
   highlightNode?: number | null;
   /** Animációs fázis [0..1]: 0 = deformálatlan, 1 = teljes deformáció (alapérték 1) */
   phase?: number;
+  /** M/V diagram-sáv rajzolása gerenda-modelleknél (Canvas 2D) */
+  showDiagrams?: boolean;
 }
 
 export const DEFAULT_RENDER_OPTIONS: RenderOptions = {
@@ -230,8 +233,10 @@ export class Renderer {
       }
     }
 
-    // Színskála-jelmagyarázat a vászonra rajzolva
-    this.drawLegend(ctx, opts.stressMax, opts.deformationScale);
+    // Színskála-jelmagyarázat a vászonra rajzolva (diagram-sáv esetén kihagyva)
+    if (!opts.showDiagrams) {
+      this.drawLegend(ctx, opts.stressMax, opts.deformationScale);
+    }
 
     // Méretvonalak + anyag/keresztmetszet infó (csak 2D nézetben, alaphelyzetű zoom mellett is jól működik)
     const v = this.lastView;
@@ -246,6 +251,9 @@ export class Renderer {
       drawLoadArrows(ctx, mesh, worldToScreen);
       drawDistributedLoads(ctx, mesh, worldToScreen);
       drawInfoPanel(ctx, mesh, width);
+      if (opts.showDiagrams) {
+        drawDiagrams(ctx, mesh, sol, worldToScreen);
+      }
     }
   }
 

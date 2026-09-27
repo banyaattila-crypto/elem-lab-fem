@@ -11,7 +11,12 @@ export interface ControlsCallbacks {
   onParamChange: (param: string, value: number | string) => void;
   onSolve: () => void;
   onLangChange: (lang: Lang) => void;
+  /** Terhelés-típus váltás (pont ⇄ elosztott) */
+  onLoadTypeChange: (loadType: 'point' | 'distributed') => void;
 }
+
+/** Gerenda-modellek, ahol a terhelés-típus választható */
+const BEAM_MODELS = new Set(['cantilever', 'simplySupported', 'fixedFixed']);
 
 export interface ModelOption {
   id: string;
@@ -27,7 +32,7 @@ export class ControlsPanel {
     this.cb = cb;
   }
 
-  render(modelOptions: ModelOption[]): void {
+  render(modelOptions: ModelOption[], current?: { modelId: string; loadType: 'point' | 'distributed' }): void {
     this.root.innerHTML = '';
 
     // 1) Modellválasztó
@@ -38,6 +43,22 @@ export class ControlsPanel {
       (v) => this.cb.onModelChange(v),
     );
     this.root.appendChild(modelSel);
+
+    // 1b) Terhelés-típus váltó — csak gerenda-modelleknél
+    if (current && BEAM_MODELS.has(current.modelId)) {
+      const ltOptions: ModelOption[] = [
+        { id: 'point', label: t('controls.loadPoint') },
+        { id: 'distributed', label: t('controls.loadDistributed') },
+      ];
+      const ltSel = this.select(
+        'loadtype-select',
+        t('controls.loadType'),
+        ltOptions,
+        (v) => this.cb.onLoadTypeChange(v as 'point' | 'distributed'),
+      );
+      (ltSel.querySelector('select') as HTMLSelectElement).value = current.loadType;
+      this.root.appendChild(ltSel);
+    }
 
     // 2) Terhelés csúszka
     this.root.appendChild(

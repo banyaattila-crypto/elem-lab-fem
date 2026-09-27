@@ -65,6 +65,8 @@ const state = {
   phase: 1,
   engine: 'canvas' as 'canvas' | 'webgl',
   elementType: 'CST' as 'CST' | 'T6',
+  /** Terhelés-típus: pontterhelés vagy elosztott (csak gerenda-modelleknél) */
+  loadType: 'point' as 'point' | 'distributed',
 };
 
 let rafId: number | null = null;
@@ -201,6 +203,9 @@ function estimateTolerance(mesh: Mesh): number {
   return Math.max(size * 0.35, 1e-6);
 }
 
+/** Gerenda-modellek, ahol M/V diagram is mutatható */
+const BEAM_MODELS = new Set(['cantilever', 'simplySupported', 'fixedFixed']);
+
 function redraw(): void {
   if (!lastMesh || !lastSol) return;
   const common = {
@@ -210,6 +215,7 @@ function redraw(): void {
     highlight: state.selectedElem,
     highlightNode: state.selectedNode,
     phase: state.phase,
+    showDiagrams: state.engine === 'canvas' && BEAM_MODELS.has(state.modelId),
   };
   if (state.engine === 'webgl') {
     if (webglRenderer) {
@@ -347,10 +353,14 @@ const controls = new ControlsPanel(
       rebuildAndSolve();
     },
     onSolve: () => rebuildAndSolve(),
+    onLoadTypeChange: (lt) => {
+      state.loadType = lt;
+      rebuildAndSolve();
+    },
     onLangChange: (lang) => {
       setLang(lang);
       localizeStatic(lang);
-      controls.render(MODEL_OPTIONS);
+      controls.render(MODEL_OPTIONS, { modelId: state.modelId, loadType: state.loadType });
       updateLesson(state.modelId, lang);
       rebuildAndSolve();
     },
@@ -371,6 +381,7 @@ function currentMesh(): Mesh {
     loadN: state.load,
     density: state.density,
     material: state.material,
+    loadType: state.loadType,
   };
   switch (state.modelId) {
     case 'cantilever':
@@ -564,7 +575,7 @@ function showFatalBanner(message: string): void {
 // ————— Indítás védetten: ha bármelyik lépés elhasal, látható hiba jelenik meg —————
 try {
   setLang('hu');
-  controls.render(MODEL_OPTIONS);
+  controls.render(MODEL_OPTIONS, { modelId: state.modelId, loadType: state.loadType });
   document.querySelector<HTMLButtonElement>('#anim-btn')!.addEventListener('click', toggleAnimation);
   resizeCanvas();
   rebuildAndSolve();
