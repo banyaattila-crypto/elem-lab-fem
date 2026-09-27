@@ -221,6 +221,29 @@ canvas {
   font-variant-numeric: tabular-nums;
 }
 
+/* Verzió-információ a láblécben */
+.verinfo {
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  margin-left: 0.5em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Látható hiba-banner: ha az app indítása elhasal, ezt látszük üres vászon helyett */
+.fatal-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  background: #7f1d1d;
+  color: #fecaca;
+  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
+  font-family: monospace;
+  border-bottom: 1px solid #ef4444;
+}
+
 .anim-btn {
   position: absolute;
   left: 10px;

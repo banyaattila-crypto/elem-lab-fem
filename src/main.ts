@@ -18,6 +18,7 @@ import { renderNodeInspection } from './ui/nodepanel-view';
 import { findElementAt, findNodeAt, screenToWorld } from './viz/picking';
 import { viridisCss } from './viz/colormap';
 import { ControlsPanel, type ModelOption } from './ui/controls';
+import { APP_VERSION, BUILD_ID } from './version';
 import { lessonFor } from './ui/lessons';
 import { setLang, type Lang } from './ui/i18n';
 import type { Mesh, SolutionResult } from './fem/types';
@@ -93,13 +94,23 @@ app.innerHTML = `
     </main>
   </div>
   <footer>
-    <p>ElemLab — végeselem-módszer, oktatási célú bemutató. Saját felelősségre!</p>
+    <p>ElemLab — végeselem-módszer, oktatási célú bemutató. Saját felelősségre!
+      <span class="verinfo" id="verinfo"></span></p>
   </footer>
 `;
 
 const canvas = document.querySelector<HTMLCanvasElement>('#canvas')!;
 const renderer = new Renderer(canvas);
-const webglRenderer = new WebGLRenderer(canvas);
+// WebGL Opcionális: ha nem elérhető (régi VM, kikapcs. hw-gyorsítás,
+// blokkolt GPU), a teljes app ne dőljön el — csak a 3D gomb tiltva.
+let webglRenderer: WebGLRenderer | null = null;
+let webglError: string | null = null;
+try {
+  webglRenderer = new WebGLRenderer(canvas);
+} catch (err) {
+  webglError = err instanceof Error ? err.message : String(err);
+  console.error('[ElemLab] WebGL nem elérhető — a 3D nézet tiltva:', webglError);
+}
 
 // ————— Elemkiválasztás + matematikai panel —————
 
@@ -186,7 +197,14 @@ function redraw(): void {
     phase: state.phase,
   };
   if (state.engine === 'webgl') {
-    webglRenderer.render(lastMesh, lastSol, common);
+    if (webglRenderer) {
+      webglRenderer.render(lastMesh, lastSol, common);
+    } else {
+      // WebGL nem elérhető → visszaváltás 2D-re
+      state.engine = 'canvas';
+      setEngineButtons();
+      renderer.render(lastMesh, lastSol, common);
+    }
   } else {
     renderer.render(lastMesh, lastSol, common);
   }
@@ -269,7 +287,7 @@ function resizeCanvas(): void {
   const wrap = canvas.parentElement!;
   canvas.width = wrap.clientWidth;
   canvas.height = Math.max(320, Math.min(560, wrap.clientWidth * 0.62));
-  webglRenderer.setSize(canvas.width, canvas.height);
+  webglRenderer?.setSize(canvas.width, canvas.height);
 }
 window.addEventListener('resize', () => {
   resizeCanvas();
@@ -469,6 +487,15 @@ document.querySelector<HTMLButtonElement>('#engine-canvas')!.addEventListener('c
   redraw();
 });
 document.querySelector<HTMLButtonElement>('#engine-webgl')!.addEventListener('click', () => {
+  if (!webglRenderer) {
+    const hu = getLang() === 'hu';
+    alert(
+      hu
+        ? 'A 3D (WebGL) nézet nem elérhető ezen a gépen.\n' + webglError
+        : 'The 3D (WebGL) view is not available on this machine.\n' + webglError,
+    );
+    return;
+  }
   state.engine = 'webgl';
   setEngineButtons();
   redraw();
@@ -490,8 +517,36 @@ document.querySelector<HTMLButtonElement>('#elem-t6')!.addEventListener('click',
   rebuildAndSolve();
 });
 
-setLang('hu');
-controls.render(MODEL_OPTIONS);
-document.querySelector<HTMLButtonElement>('#anim-btn')!.addEventListener('click', toggleAnimation);
-resizeCanvas();
-rebuildAndSolve();
+// ————— Verzió-információ (látható + konzol + DevTools: window.ELEMLAB) —————
+
+const verEl = document.querySelector<HTMLSpanElement>('#verinfo');
+if (verEl) {
+  verEl.textContent = ` v${APP_VERSION} · build ${BUILD_ID.slice(0, 16).replace('T', ' ')}`;
+  verEl.title = `Teljes build-ID: ${BUILD_ID}`;
+}
+console.info(`[ElemLab] v${APP_VERSION} · build ${BUILD_ID}`);
+window.ELEMLAB = { version: APP_VERSION, buildId: BUILD_ID };
+
+/** Látható hiba-banner, ha a UI-felépítés közben kivétel keletkezik */
+function showFatalBanner(message: string): void {
+  const el = document.createElement('div');
+  el.className = 'fatal-banner';
+  el.setAttribute('role', 'alert');
+  el.textContent = message;
+  document.body.prepend(el);
+}
+
+// ————— Indítás védetten: ha bármelyik lépés elhasal, látható hiba jelenik meg —————
+try {
+  setLang('hu');
+  controls.render(MODEL_OPTIONS);
+  document.querySelector<HTMLButtonElement>('#anim-btn')!.addEventListener('click', toggleAnimation);
+  resizeCanvas();
+  rebuildAndSolve();
+} catch (err) {
+  console.error('[ElemLab] inicializálási hiba:', err);
+  showFatalBanner(
+    `Hiba az app indításakor: ${err instanceof Error ? err.message : String(err)} — ` +
+      `v${APP_VERSION} · build ${BUILD_ID.slice(0, 16)}`,
+  );
+}
