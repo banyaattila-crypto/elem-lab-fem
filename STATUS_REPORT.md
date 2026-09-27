@@ -183,3 +183,6 @@ A teljes, képletekkel ellátott specifikáció: **[docs/fem-spec.md](docs/fem-s
 | 2026-09-26 | Vercel bekötve (vercel.json: vite framework, dist kimenet); füstteszt OK (HTTP 200) |
 | 2026-09-26 | **Valós idejű elemvizsgálat (MathPanel)**: kattintásra egy elem teljes CST-levezetése KaTeX képletekkel, élő számokkal — geometria, b/c csúszóintek, A, D, B, kₑ, uₑ, ε, σ, Von Mises; elemnavigáció ◀ ▶; kiemelés a canvason; picking tiszta modullal + 5 új teszt (20/20 zöld) |
 | 2026-09-26 | STATUS_REPORT.md átfogó frissítése: struktúra a valósághoz igazítva, hosting → Vercel, mérföldkövek és kockázatok aktualizálva |
+| 2026-09-26 | **Csomópont-vizsgálat (NodePanel)**: elmozdulás, terhelés, reakcióerő (R = K·u − f), környező elemek, erőegyensúly-levezetés; reakció-számítás a szolverben; kattintásban a csomópont elsőbbséget élvez; 7 új fizikai teszt (ΣR + ΣF = 0) → **27/27 zöld** |
+| 2026-09-26 | **Mobil polish**: 44px érintési célok, kompakt panelek, képlet-skálázás kis kijelzőn |
+| 2026-09-26 | **Repo publikus**: titok-szken tiszta, README.en.md, leírás + 8 topic (fem, education, …) — portfólióra kész |
