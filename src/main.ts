@@ -73,9 +73,11 @@ app.innerHTML = `
       <div class="canvas-wrap">
         <canvas id="canvas"></canvas>
         <div class="legend" id="legend">
-          <span>0</span>
+          <span id="legend-lo">0</span>
           <div class="legend-bar" id="legend-bar"></div>
-          <span>max</span>
+          <span id="legend-hi">max</span>
+          <span class="legend-sep"></span>
+          <span class="legend-def" id="legend-def">×500</span>
         </div>
         <button id="anim-btn" class="anim-btn" aria-pressed="false">▶ Animáció indítása</button>
         <div class="engine-switch">
@@ -102,6 +104,7 @@ const webglRenderer = new WebGLRenderer(canvas);
 // ————— Elemkiválasztás + matematikai panel —————
 
 canvas.addEventListener('click', (ev) => {
+  if (panMoved) return; // húzás volt, nem kattintás → nincs kiválasztás
   const view = renderer.lastView;
   if (!view || !lastMesh) return;
   const rect = canvas.getBoundingClientRect();
@@ -114,6 +117,47 @@ canvas.addEventListener('click', (ev) => {
     state.selectedNode == null ? findElementAt(lastMesh, world.x, world.y) : null;
   updateMathPanel();
   updateNodePanel();
+  redraw();
+});
+
+// ————— Zoom / pan (Canvas 2D) —————
+// Görgő: zoom a mutató körül; húzás: mozgatás; dupla kattintás: nézet visszaállítása.
+canvas.addEventListener('wheel', (ev) => {
+  if (state.engine !== 'canvas') return;
+  ev.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const factor = Math.exp(-ev.deltaY * 0.0015);
+  renderer.zoomAt(ev.clientX - rect.left, ev.clientY - rect.top, factor);
+  redraw();
+}, { passive: false });
+
+let panning = false;
+let panStartX = 0;
+let panStartY = 0;
+let panMoved = false;
+canvas.addEventListener('pointerdown', (ev) => {
+  if (state.engine !== 'canvas' || ev.button !== 0) return;
+  panning = true;
+  panMoved = false;
+  panStartX = ev.clientX;
+  panStartY = ev.clientY;
+});
+window.addEventListener('pointermove', (ev) => {
+  if (!panning) return;
+  const dsx = ev.clientX - panStartX;
+  const dsy = ev.clientY - panStartY;
+  panStartX = ev.clientX;
+  panStartY = ev.clientY;
+  if (Math.abs(dsx) + Math.abs(dsy) > 3) panMoved = true;
+  renderer.panBy(dsx, dsy);
+  redraw();
+});
+window.addEventListener('pointerup', () => {
+  panning = false;
+});
+canvas.addEventListener('dblclick', () => {
+  if (state.engine !== 'canvas') return;
+  renderer.resetView();
   redraw();
 });
 
@@ -326,6 +370,7 @@ function rebuildAndSolve(): void {
   redraw();
   updateResults(sol, getLang());
   updateLesson(state.modelId, getLang());
+  renderLegend(sol.maxVonMises || 1, state.defscale);
   updateMathPanel();
   updateNodePanel();
 }
@@ -397,12 +442,19 @@ function formatPa(v: number): string {
 
 // ————— Legenda —————
 
-function renderLegend(): void {
+function renderLegend(maxVm: number, defscale: number): void {
   const bar = document.querySelector<HTMLDivElement>('#legend-bar')!;
   const stops = 10;
   const colors: string[] = [];
   for (let i = 0; i <= stops; i++) colors.push(viridisCss(i / stops));
   bar.style.background = `linear-gradient(to right, ${colors.join(',')})`;
+  // Értékes címkék: 0 és max feszültség, + deformáció-méretarány
+  const lo = document.querySelector<HTMLSpanElement>('#legend-lo')!;
+  const hi = document.querySelector<HTMLSpanElement>('#legend-hi')!;
+  const def = document.querySelector<HTMLSpanElement>('#legend-def')!;
+  lo.textContent = '0';
+  hi.textContent = formatPa(maxVm);
+  def.textContent = `×${defscale}`;
 }
 
 // ————— Indítás —————
@@ -440,7 +492,6 @@ document.querySelector<HTMLButtonElement>('#elem-t6')!.addEventListener('click',
 
 setLang('hu');
 controls.render(MODEL_OPTIONS);
-renderLegend();
 document.querySelector<HTMLButtonElement>('#anim-btn')!.addEventListener('click', toggleAnimation);
 resizeCanvas();
 rebuildAndSolve();

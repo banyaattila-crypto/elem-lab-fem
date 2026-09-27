@@ -9,11 +9,13 @@ import 'katex/dist/katex.min.css';
 import { fmt } from './mathpanel';
 import type { NodeInspection } from './nodepanel';
 
-const esc = (s: string): string =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
+/**
+ * A TeX-karakterláncokat NEM escape-eljük HTML-be: a `&` (mátrix-
+ * oszlopelválasztó) HTML-escape után „&amp;”-ként jelenne meg.
+ * A KaTeX alapból nem enged raw HTML-t a TeX-ben, így ez így biztonságos.
+ */
 function disp(s: string): string {
-  return katex.renderToString(esc(s), { throwOnError: false, displayMode: true });
+  return katex.renderToString(s, { throwOnError: false, displayMode: true });
 }
 
 export function renderNodeInspection(

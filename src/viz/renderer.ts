@@ -33,6 +33,12 @@ export class Renderer {
   private ctx: CanvasRenderingContext2D;
   /** Az utolsó render világ→képernyő transzformációja (picking-hez) */
   lastView: ViewTransform | null = null;
+  /** Felhasználói zoom (1 = auto-fit) */
+  zoom = 1;
+  /** Eltolás a fit-középponthoz képest [világ egység] */
+  panX = 0;
+  panY = 0;
+  private lastMeshRef: Mesh | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -80,9 +86,17 @@ export class Renderer {
     const maxY = Math.max(b.maxY, ext.maxY);
     const w = Math.max(maxX - minX, 1e-9);
     const h = Math.max(maxY - minY, 1e-9);
-    const scale = Math.min((width - 2 * pad) / w, (height - 2 * pad) / h);
-    const midX = (minX + maxX) / 2;
-    const midY = (minY + maxY) / 2;
+    const baseScale = Math.min((width - 2 * pad) / w, (height - 2 * pad) / h);
+    // Új modell → nézet visszaállítása
+    if (mesh !== this.lastMeshRef) {
+      this.zoom = 1;
+      this.panX = 0;
+      this.panY = 0;
+      this.lastMeshRef = mesh;
+    }
+    const midX = (minX + maxX) / 2 + this.panX;
+    const midY = (minY + maxY) / 2 + this.panY;
+    const scale = baseScale * this.zoom;
     this.lastView = { midX, midY, scale, canvasWidth: width, canvasHeight: height };
 
     // világ → képernyő transzformáció (deformált koordinátákkal)
@@ -182,6 +196,87 @@ export class Renderer {
         ctx.fill();
       }
     }
+
+    // Színskála-jelmagyarázat a vászonra rajzolva
+    this.drawLegend(ctx, opts.stressMax, opts.deformationScale);
+  }
+
+  /**
+   * Színskála-jelmagyarázat a vászonra rajzolva (Canvas 2D nézet):
+   * Viridis sáv + 0/max Von Mises érték + deformáció-méretarány.
+   */
+  private drawLegend(ctx: CanvasRenderingContext2D, stressMax: number, defscale: number): void {
+    const { width, height } = this.canvas;
+    const barW = 150;
+    const barH = 10;
+    const x0 = width - barW - 16;
+    const y0 = height - 32;
+
+    ctx.save();
+    // háttérpaneL
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+    ctx.beginPath();
+    ctx.roundRect(x0 - 8, y0 - 18, barW + 16, barH + 30, 6);
+    ctx.fill();
+
+    // színskála (sűrű csíkozás = folytonos hatás)
+    const steps = 60;
+    for (let i = 0; i < steps; i++) {
+      ctx.fillStyle = viridisCss(i / (steps - 1));
+      ctx.fillRect(x0 + (i * barW) / steps, y0, barW / steps + 1, barH);
+    }
+    ctx.strokeStyle = 'rgba(226, 232, 240, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x0, y0, barW, barH);
+
+    // feliratok
+    ctx.fillStyle = 'rgba(226, 232, 240, 0.9)';
+    ctx.font = '10px system-ui, sans-serif';
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    ctx.fillText('0', x0, y0 + barH + 4);
+    ctx.textAlign = 'right';
+    ctx.fillText(formatPaStress(stressMax), x0 + barW, y0 + barH + 4);
+    ctx.textBaseline = 'bottom';
+    ctx.textAlign = 'left';
+    ctx.fillText('Von Mises', x0, y0 - 3);
+    ctx.textAlign = 'right';
+    ctx.fillText(`deformáció ×${fmtScale(defscale)}`, x0 + barW, y0 - 3);
+    ctx.restore();
+  }
+
+  /**
+   * Görgős zoom: a mutató alatti világpont rögzítve marad a képernyőn.
+   * `factor` > 1 = nagyítás, < 1 = kicsinyítés.
+   */
+  zoomAt(sx: number, sy: number, factor: number): void {
+    const v = this.lastView;
+    if (!v) return;
+    const wx = v.midX + (sx - v.canvasWidth / 2) / v.scale;
+    const wy = v.midY + (v.canvasHeight / 2 - sy) / v.scale;
+    const oldZoom = this.zoom;
+    this.zoom = Math.min(64, Math.max(0.5, oldZoom * factor));
+    const s = (v.scale / oldZoom) * this.zoom;
+    // Az új középpont úgy állítódik be, hogy (wx, wy) a régiben (sx, sy) maradjon
+    const newMidX = wx - (sx - v.canvasWidth / 2) / s;
+    const newMidY = wy + (sy - v.canvasHeight / 2) / s;
+    this.panX += newMidX - v.midX;
+    this.panY += newMidY - v.midY;
+  }
+
+  /** Húzásos mozgatás képernyő-pixelekben (a képernyő Y tengelye tükrözött!) */
+  panBy(dsx: number, dsy: number): void {
+    const v = this.lastView;
+    if (!v) return;
+    this.panX -= dsx / v.scale;
+    this.panY += dsy / v.scale;
+  }
+
+  /** Nézet visszaállítása auto-fit-re */
+  resetView(): void {
+    this.zoom = 1;
+    this.panX = 0;
+    this.panY = 0;
   }
 }
 
@@ -214,4 +309,20 @@ function deformationExtent(
 function viridisCss(t: number): string {
   const { r, g, b } = viridis(t);
   return `rgb(${r},${g},${b})`;
+}
+
+/** Feszültség emberi formátumban a canvas-jelmagyarázathoz */
+function formatPaStress(v: number): string {
+  const a = Math.abs(v);
+  if (a < 1e-12) return '0';
+  if (a >= 1e9) return `${(v / 1e9).toFixed(2)} GPa`;
+  if (a >= 1e6) return `${(v / 1e6).toFixed(2)} MPa`;
+  if (a >= 1e3) return `${(v / 1e3).toFixed(1)} kPa`;
+  return `${v.toFixed(1)} Pa`;
+}
+
+/** Deformáció-nagyítás tömör címkéje */
+function fmtScale(v: number): string {
+  if (v >= 1000) return `${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k`;
+  return `${v}`;
 }

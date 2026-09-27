@@ -8,17 +8,21 @@ import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import { fmt, type ElementInspection } from './mathpanel';
 
-const esc = (s: string): string =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+/**
+ * A TeX-karakterláncokat NEM escape-eljük HTML-be: a `&` (mátrix-
+ * oszlopelválasztó) és a `<`/`>` érvényes LaTeX-jelek, a HTML-escape
+ * tönkreteszi őket („&amp;” jelent meg a képletekben). A KaTeX alapból
+ * nem enged raw HTML-t a TeX-ben, így ez így biztonságos.
+ */
 
 /** Inline képlet */
 function tex(s: string): string {
-  return katex.renderToString(esc(s), { throwOnError: false });
+  return katex.renderToString(s, { throwOnError: false });
 }
 
 /** Blokk (display) képlet */
 function disp(s: string): string {
-  return katex.renderToString(esc(s), { throwOnError: false, displayMode: true });
+  return katex.renderToString(s, { throwOnError: false, displayMode: true });
 }
 
 /** Mátrix LaTeX-ként */

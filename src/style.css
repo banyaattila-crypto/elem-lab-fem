@@ -211,6 +211,16 @@ canvas {
   border-radius: 5px;
 }
 
+.legend-sep {
+  width: 1px;
+  height: 14px;
+  background: var(--border);
+}
+
+.legend-def {
+  font-variant-numeric: tabular-nums;
+}
+
 .anim-btn {
   position: absolute;
   left: 10px;
