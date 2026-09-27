@@ -1,13 +1,14 @@
 /**
- * M/V diagramok gerenda-modellekhez.
- * A FEM-megoldásból (elemi feszültségekből) visszafejtett belső erők:
- *  - Hajlítási feszültség-profil: a felső szál σx feszültsége a gerenda
- *    tengelye mentén — M(x) = σ_top(x)·W alakban egyenesen a nyomaték.
- *  - Nyíróerő V(x): a keresztmetszeten átvitt nyíróerő, a τxy értékekből
- *    (V ≈ ∫τ·t dy ≈ τ·t·H közelítés a CST konstans elemeken).
+ * M/V diagramok gerenda-modellekhez — adatkinyerés + külön panel.
  *
- * Oktatási célú közelítés: a profil a deformálatlan gerenda tengelye
- * mentén értendő, elemenkénti konstans értékekkel (CST).
+ * Adatmodell (sampleDiagrams):
+ *  - Hajlítási szélsőfeszültség-profil: Δσ = σ_top − σ_bot az elem-sávokból
+ *  - Nyíróerő: a nyomaték-profil deriváltja (klasszikus V = dM/dx)
+ *
+ * Rajzolás (MVPanel): saját, nagy felbontású canvas a fő vászon alatt,
+ * két al-diagrammal (M felül, V alul), kurzor-kiolvasással:
+ *  - függőleges kurzorvonal az egér x-pozíciójában
+ *  - pöttyök a görbéken + kiolvasó doboz: x, M(x), V(x)
  */
 
 import type { Mesh, SolutionResult } from '../fem/types';
@@ -16,15 +17,15 @@ import type { Mesh, SolutionResult } from '../fem/types';
 export interface DiagramSample {
   /** x [világ egység] */
   x: number;
-  /** felső szál σx [Pa] — M-mel arányos */
+  /** hajlítási szélsőfeszültség Δσ = σ_top − σ_bot [Pa] — M-mel arányos */
   sigmaTop: number;
-  /** nyíróerő V [N] */
+  /** nyíróerő V [N] (V = dM/dx) */
   shear: number;
 }
 
 /**
- * Diagram-mintavételezés: az elemek súlypontja szerint rendezve.
- * Ugyanazon x-re eső elemek értékei átlagolódnak.
+ * Diagram-mintavételezés: az elemek súlypontja szerint, felső/alsó
+ * elem-sávokra bontva. Ugyanazon x-re eső elemek értékei átlagolódnak.
  */
 export function sampleDiagrams(
   mesh: Mesh,
@@ -34,17 +35,18 @@ export function sampleDiagrams(
   let minX = Infinity;
   let maxX = -Infinity;
   let sumY = 0;
+  let minY = Infinity;
+  let maxY = -Infinity;
   for (const n of mesh.nodes) {
     if (n.x < minX) minX = n.x;
     if (n.x > maxX) maxX = n.x;
+    if (n.y < minY) minY = n.y;
+    if (n.y > maxY) maxY = n.y;
     sumY += n.y;
   }
   const midY = sumY / mesh.nodes.length;
-  const H = Math.max(...mesh.nodes.map((n) => n.y)) - Math.min(...mesh.nodes.map((n) => n.y));
+  const H = maxY - minY;
 
-  // elemenkénti értékek a súlypont x-éhez, FELSŐ és ALSÓ elem-sávra bontva
-  // (a hajlítási szélsőfeszültség a felső és alsó szál σx különbségéből adódik:
-  //  Δσ = σ_top − σ_bot = M·(c_top + c_bot)/I → M-mel arányos)
   interface Acc { topSum: number; topN: number; botSum: number; botN: number }
   const buckets = new Map<number, Acc>();
   for (const elem of mesh.elements) {
@@ -79,116 +81,287 @@ export function sampleDiagrams(
     samples.push({ x: k, sigmaTop: top - bot, shear: 0 });
   }
 
-  // Második lépés: V(x) = dM/dx, ahol M = Δσ·I/(H/2) — a nyíróerő a
-  // nyomaték-profil deriváltja (a klasszikus gerenda-összefüggés).
-  const I = (mesh.thickness * H * H * H) / 12;
+  // Második lépés: V(x) = dM/dx, ahol M = Δσ·W (W = t·H²/6)
+  const W = (mesh.thickness * H * H * H / 8) / (H / 2); // = t·H²/6
   for (let i = 0; i < samples.length; i++) {
     const iPrev = Math.max(0, i - 1);
     const iNext = Math.min(samples.length - 1, i + 1);
     const dx = samples[iNext]!.x - samples[iPrev]!.x;
     if (dx < 1e-12) continue;
-    const mPrev = samples[iPrev]!.sigmaTop * (I / (H / 2));
-    const mNext = samples[iNext]!.sigmaTop * (I / (H / 2));
+    const mPrev = samples[iPrev]!.sigmaTop * W;
+    const mNext = samples[iNext]!.sigmaTop * W;
     samples[i]!.shear = (mNext - mPrev) / dx;
   }
   return samples;
 }
 
-/** Erő/feszültség rövid formázó a diagram-tengelyekhez */
-function fmtVal(v: number): string {
+/** Erő/feszültség rövid formázó */
+function fmtVal(v: number, unit: string): string {
   const a = Math.abs(v);
-  if (a >= 1e6) return `${(v / 1e6).toFixed(1)} MPa`;
-  if (a >= 1e3) return `${(v / 1e3).toFixed(1)} kPa`;
-  return `${v.toFixed(0)} Pa`;
+  if (unit === 'Nm') {
+    if (a >= 1e3) return `${(v / 1e3).toFixed(1)} kNm`;
+    return `${v.toFixed(0)} Nm`;
+  }
+  if (a >= 1e3) return `${(v / 1e3).toFixed(1)} kN`;
+  return `${v.toFixed(0)} N`;
+}
+
+/** Hossz formázó az x-tengelyhez */
+function fmtX(m: number): string {
+  return m >= 1 ? `${m.toFixed(2)} m` : `${(m * 1000).toFixed(0)} mm`;
 }
 
 /**
- * Diagramok kirajzolása a vászon ALJÁN lévő sávba (a gerenda alatt):
- *  - felső sáv: hajlítási feszültség-profil (M-mel arányos)
- *  - alsó sáv: nyíróerő V(x)
- * A sáv a canvas alsó ~38%-án van, ha a mesh-nek van elég x-terjedelme.
+ * M/V panel: a fő vászon alatti önálló canvas, kurzor-kiolvasással.
  */
-export function drawDiagrams(
-  ctx: CanvasRenderingContext2D,
-  mesh: Mesh,
-  sol: SolutionResult,
-  worldToScreen: (x: number, y: number) => { sx: number; sy: number },
-): void {
-  const samples = sampleDiagrams(mesh, sol);
-  if (samples.length < 2) return;
+export class MVPanel {
+  private canvas: HTMLCanvasElement;
+  private ctx: CanvasRenderingContext2D;
+  private samples: DiagramSample[] = [];
+  private x0w = 0;
+  private x1w = 1;
+  private cursorWx: number | null = null;
+  /** marginalések */
+  private readonly padL = 10;
+  private readonly padR = 74;
+  private readonly padTop = 14;
+  private readonly subGap = 10;
 
-  const { height } = ctx.canvas;
-  const bandTop = height * 0.6;
-  const bandH = (height - bandTop) / 2;
+  constructor(canvas: HTMLCanvasElement) {
+    this.canvas = canvas;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas 2D context nem elérhető (MVPanel)');
+    this.ctx = ctx;
 
-  // skálák
-  let maxS = 0;
-  let maxV = 0;
-  for (const s of samples) {
-    maxS = Math.max(maxS, Math.abs(s.sigmaTop));
-    maxV = Math.max(maxV, Math.abs(s.shear));
+    canvas.addEventListener('pointermove', (ev) => {
+      const rect = canvas.getBoundingClientRect();
+      this.cursorWx = this.screenToWorldX(ev.clientX - rect.left);
+      this.draw();
+    });
+    canvas.addEventListener('pointerleave', () => {
+      this.cursorWx = null;
+      this.draw();
+    });
   }
-  if (maxS < 1e-12 && maxV < 1e-12) return;
-  maxS = Math.max(maxS, 1e-9);
-  maxV = Math.max(maxV, 1e-9);
 
-  // X-tartomány képernyőn
-  const sx0 = worldToScreen(samples[0]!.x, 0).sx;
-  const sx1 = worldToScreen(samples[samples.length - 1]!.x, 0).sx;
+  /** Adatok frissítése a legutóbbi szimulációból */
+  setData(mesh: Mesh, sol: SolutionResult): void {
+    this.samples = sampleDiagrams(mesh, sol);
+    if (this.samples.length > 0) {
+      this.x0w = this.samples[0]!.x;
+      this.x1w = this.samples[this.samples.length - 1]!.x;
+    }
+    this.draw();
+  }
 
-  ctx.save();
-  ctx.font = '10px system-ui, sans-serif';
-  ctx.textBaseline = 'top';
+  /** Panel ürítése (nem gerenda modellnél) */
+  clear(): void {
+    this.samples = [];
+    this.cursorWx = null;
+    this.draw();
+  }
 
-  // ————— 1) Hajlítási feszültség (M-profil) —————
-  const mMid = bandTop + bandH / 2;
-  ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
-  ctx.beginPath();
-  ctx.moveTo(sx0, mMid);
-  ctx.lineTo(sx1, mMid);
-  ctx.stroke();
+  private plotLeft(): number {
+    return this.padL;
+  }
+  private plotRight(): number {
+    return Math.max(this.canvas.clientWidth - this.padR, this.padL + 40);
+  }
 
-  ctx.strokeStyle = '#fbbf24';
-  ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  samples.forEach((s, i) => {
-    const px = worldToScreen(s.x, 0).sx;
-    const py = mMid - (s.sigmaTop / maxS) * (bandH * 0.42);
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-  });
-  ctx.stroke();
+  private screenToWorldX(sx: number): number {
+    const l = this.plotLeft();
+    const r = this.plotRight();
+    const t = (sx - l) / Math.max(r - l, 1);
+    return this.x0w + t * (this.x1w - this.x0w);
+  }
 
-  ctx.fillStyle = '#fbbf24';
-  ctx.textAlign = 'left';
-  ctx.fillText('σ forgás (M-profil)', sx0, bandTop + 2);
-  ctx.textAlign = 'right';
-  ctx.fillText(`±${fmtVal(maxS)}`, sx1, bandTop + 2);
+  private worldToScreenX(wx: number): number {
+    const l = this.plotLeft();
+    const r = this.plotRight();
+    const t = (wx - this.x0w) / Math.max(this.x1w - this.x0w, 1e-12);
+    return l + t * (r - l);
+  }
 
-  // ————— 2) Nyíróerő V —————
-  const vMid = bandTop + bandH * 1.5;
-  ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
-  ctx.beginPath();
-  ctx.moveTo(sx0, vMid);
-  ctx.lineTo(sx1, vMid);
-  ctx.stroke();
+  /** Lineáris interpoláció a minták között */
+  private sampleAt(wx: number): DiagramSample | null {
+    const s = this.samples;
+    if (s.length === 0) return null;
+    if (wx <= s[0]!.x) return s[0]!;
+    if (wx >= s[s.length - 1]!.x) return s[s.length - 1]!;
+    for (let i = 1; i < s.length; i++) {
+      if (s[i]!.x >= wx) {
+        const a = s[i - 1]!;
+        const b = s[i]!;
+        const t = (wx - a.x) / Math.max(b.x - a.x, 1e-12);
+        return {
+          x: wx,
+          sigmaTop: a.sigmaTop + t * (b.sigmaTop - a.sigmaTop),
+          shear: a.shear + t * (b.shear - a.shear),
+        };
+      }
+    }
+    return s[s.length - 1]!;
+  }
 
-  ctx.strokeStyle = '#38bdf8';
-  ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  samples.forEach((s, i) => {
-    const px = worldToScreen(s.x, 0).sx;
-    const py = vMid - (s.shear / maxV) * (bandH * 0.42);
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-  });
-  ctx.stroke();
+  private draw(): void {
+    const ctx = this.ctx;
+    const canvas = this.canvas;
+    // CSS-méretre igazítás (éles kijelzőn devicePixelRatio)
+    const cssW = Math.max(canvas.clientWidth, 120);
+    const cssH = 170;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (canvas.width !== Math.round(cssW * dpr) || canvas.height !== Math.round(cssH * dpr)) {
+      canvas.width = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
 
-  ctx.fillStyle = '#38bdf8';
-  ctx.textAlign = 'left';
-  ctx.fillText('V nyíróerő', sx0, bandTop + bandH + 2);
-  ctx.textAlign = 'right';
-  ctx.fillText(`±${fmtVal(maxV)}`, sx1, bandTop + bandH + 2);
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.5)';
+    ctx.fillRect(0, 0, cssW, cssH);
 
-  ctx.restore();
+    if (this.samples.length < 2) {
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.6)';
+      ctx.font = '12px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('M/V diagram — válassz gerenda-modellt', cssW / 2, cssH / 2);
+      return;
+    }
+
+    const height = cssH;
+    const subH = (height - this.padTop * 2 - this.subGap) / 2;
+    const mTop = this.padTop;
+    const vTop = this.padTop + subH + this.subGap;
+
+    // skálák
+    let maxS = 0;
+    let maxV = 0;
+    for (const s of this.samples) {
+      maxS = Math.max(maxS, Math.abs(s.sigmaTop));
+      maxV = Math.max(maxV, Math.abs(s.shear));
+    }
+    maxS = Math.max(maxS, 1e-9);
+    maxV = Math.max(maxV, 1e-9);
+
+    this.drawSubPlot(mTop, subH, maxS, 'M (hajlítónyomaték)', 'sigmaTop', '#fbbf24', 'Nm');
+    this.drawSubPlot(vTop, subH, maxV, 'V (nyíróerő)', 'shear', '#38bdf8', 'N');
+
+    // kurzor
+    if (this.cursorWx != null) {
+      const cx = this.worldToScreenX(this.cursorWx);
+      const val = this.sampleAt(this.cursorWx);
+      if (val) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(248, 250, 252, 0.7)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(cx, mTop);
+        ctx.lineTo(cx, vTop + subH);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // pöttyök a görbéken
+        const yM = mTop + subH / 2 - (val.sigmaTop / maxS) * (subH * 0.42);
+        const yV = vTop + subH / 2 - (val.shear / maxV) * (subH * 0.42);
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath();
+        ctx.arc(cx, yM, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.arc(cx, yV, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // kiolvasó doboz
+        const lines = [
+          `x = ${fmtX(val.x)}`,
+          `M = ${fmtVal(val.sigmaTop, 'Nm')}`,
+          `V = ${fmtVal(val.shear, 'N')}`,
+        ];
+        ctx.font = '11px ui-monospace, monospace';
+        const boxW = 110;
+        const boxH = 3 * 15 + 8;
+        let bx = cx + 8;
+        if (bx + boxW > cssW - 4) bx = cx - boxW - 8;
+        const by = mTop + 4;
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.92)';
+        ctx.fillRect(bx, by, boxW, boxH);
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
+        ctx.strokeRect(bx, by, boxW, boxH);
+        ctx.fillStyle = '#e2e8f0';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        lines.forEach((s, i) => ctx.fillText(s, bx + 8, by + 6 + i * 15));
+        ctx.restore();
+      }
+    }
+
+    // x-tengely feliratok
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.8)';
+    ctx.font = '10px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(fmtX(this.x0w), this.plotLeft(), height - 12);
+    ctx.textAlign = 'right';
+    ctx.fillText(fmtX(this.x1w), this.plotRight(), height - 12);
+  }
+
+  private drawSubPlot(
+    top: number,
+    subH: number,
+    maxVal: number,
+    label: string,
+    key: 'sigmaTop' | 'shear',
+    color: string,
+    unit: string,
+  ): void {
+    const ctx = this.ctx;
+    const mid = top + subH / 2;
+    const l = this.plotLeft();
+    const r = this.plotRight();
+
+    // alapvonal
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(l, mid);
+    ctx.lineTo(r, mid);
+    ctx.stroke();
+
+    // kitöltött terület a görbe alatt
+    ctx.beginPath();
+    this.samples.forEach((s, i) => {
+      const px = this.worldToScreenX(s.x);
+      const py = mid - (s[key] / maxVal) * (subH * 0.42);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    });
+    ctx.lineTo(r, mid);
+    ctx.lineTo(l, mid);
+    ctx.closePath();
+    ctx.fillStyle = color === '#fbbf24' ? 'rgba(251, 191, 36, 0.16)' : 'rgba(56, 189, 248, 0.16)';
+    ctx.fill();
+
+    // görbe
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    this.samples.forEach((s, i) => {
+      const px = this.worldToScreenX(s.x);
+      const py = mid - (s[key] / maxVal) * (subH * 0.42);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    });
+    ctx.stroke();
+
+    // feliratok
+    ctx.fillStyle = color;
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(label, l, top + 2);
+    ctx.textAlign = 'right';
+    ctx.fillText(`±${fmtVal(maxVal, unit)}`, r, top + 2);
+  }
 }

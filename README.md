@@ -26,8 +26,9 @@ A láblécben mindig látod, melyik verziót és buildet nézed (`v0.5.0 · buil
   (pontterhelés + elosztott terhelés sémája), anyag- és keresztmetszet-infópanel
 - 🔄 **Terhelés-típus váltó**: pontterhelés ⇄ elosztott terhelés (N/m) a
   gerenda-modelleknél — mindkettő valódi FEM-terhelésként van kezelve
-- 📈 **M/V diagramok**: hajlítási feszültség- és nyíróerő-profil a gerenda
-  tengelye mentén (kattints a gerenda-modellekre!)
+- 📈 **M/V panel kurzorral**: hajlítónyomaték- és nyíróerő-diagram a vászon
+  alatti saját panelen — vidd az egeret fölé, és kiolvashatod az x, M(x), V(x)
+  értékeket (gerenda-modelleknél)
 - 🖱️ **Zoom/pan** a 2D nézetben (görgő = zoom az egér körül, húzás = mozgatás,
   dupla kattintás = visszaállítás)
 - 🧮 **Valós idejű elem- és csomópontvizsgálat**: kattintásra teljes CST-levezetés
@@ -80,7 +81,7 @@ A szolvert ismert analitikus megoldásokkal ellenőrizzük (Vitest, **51 teszt**
 | Konzolgerenda hajlása | $\delta = \frac{PL^3}{3EI}$ | FEM/analitikus ∈ (0.6, 1.05) |
 | Egyszerűen tartott gerenda | $\delta = \frac{5qL^4}{384EI}$ / $\frac{PL^3}{48EI}$ | ±30% sáv (CST) |
 | Kétvégén befogott gerenda | $\delta = \frac{PL^3}{384EI}$ + 5× arány | ±30% sáv |
-| M/V diagramok | V = dM/dx, M-profil q vagy P szerint | ±35% sáv (CST) |
+| M/V diagramok | V = dM/dx; M: qL²/8, PL/4, P·(L−x) | ±35% sáv (CST) |
 | Lyukas lemez csúcsfeszültség | $K_t \to 3\sigma_0$ | plauzibilitási sáv |
 | Reakció-egyensúly minden modellen | ΣR = −P | numerikus nulla |
 | Görgő-támasz | csak adott DOF rögzít | Rₓ = 0 ellenőrzés |

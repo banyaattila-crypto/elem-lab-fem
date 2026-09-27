@@ -36,7 +36,7 @@ The footer always shows which version and build you are looking at
   cross-section info panel
 - 🔄 **Load-type switch**: point load ⇄ distributed load on beam models —
   both handled as real FEM loads with tested global equilibrium (ΣR = q·L)
-- 📈 **M/V diagrams**: bending-stress and shear-force profiles along the beam axis
+- 📈 **M/V panel with cursor readout**: bending-moment and shear-force diagrams on a dedicated canvas below the view — hover to read x, M(x) and V(x) values (beam models)
 - 🖱️ **Zoom/pan** in the 2D view (wheel = zoom at cursor, drag = pan,
   double-click = reset), plus a WebGL (Three.js) 3D view with orbit controls
 - 🏗️ **Seven models**: cantilever, simply supported beam, fixed–fixed beam,
@@ -64,7 +64,7 @@ The solver is checked against closed-form results:
 | Cantilever tip deflection | δ = PL³ / 3EI | FEM/analytic ∈ (0.6, 1.05) |
 | Simply supported beam | δ = 5qL⁴/384EI · PL³/48EI | ±30% band (CST) |
 | Fixed–fixed beam | δ = PL³/384EI + 5× ratio | ±30% band |
-| M/V diagrams | V = dM/dx, M-profile per q or P | ±35% band (CST) |
+| M/V diagrams | V = dM/dx; M: qL²/8, PL/4, P·(L−x) | ±35% band (CST) |
 | Plate-with-hole peak stress | Kt → 3σ₀ | plausibility band |
 | Global force equilibrium | ΣR = −P | exact to 1e-6 N |
 | Roller support | restrains only its DOF | Rₓ = 0 check |

@@ -21,6 +21,7 @@ import { inspectNode } from './ui/nodepanel';
 import { renderNodeInspection } from './ui/nodepanel-view';
 import { findElementAt, findNodeAt, screenToWorld } from './viz/picking';
 import { viridisCss } from './viz/colormap';
+import { MVPanel } from './viz/diagrams';
 import { ControlsPanel, type ModelOption } from './ui/controls';
 import { APP_VERSION, BUILD_ID } from './version';
 import { lessonFor } from './ui/lessons';
@@ -101,6 +102,9 @@ app.innerHTML = `
           <button id="elem-t6" title="Elem-típus: lineáris CST ⇄ kvadratikus T6">CST</button>
         </div>
       </div>
+      <div class="mv-panel" id="mv-panel">
+        <canvas id="mv-canvas"></canvas>
+      </div>
       <section class="lesson-card" id="lesson-card"></section>
       <section class="results" id="results"></section>
       <section class="mathpanel" id="mathpanel"></section>
@@ -114,6 +118,8 @@ app.innerHTML = `
 `;
 
 const canvas = document.querySelector<HTMLCanvasElement>('#canvas')!;
+const mvCanvas = document.querySelector<HTMLCanvasElement>('#mv-canvas')!;
+const mvPanel = new MVPanel(mvCanvas);
 const renderer = new Renderer(canvas);
 // WebGL Opcionális: ha nem elérhető (régi VM, kikapcs. hw-gyorsítás,
 // blokkolt GPU), a teljes app ne dőljön el — csak a 3D gomb tiltva.
@@ -212,8 +218,13 @@ function redraw(): void {
     highlight: state.selectedElem,
     highlightNode: state.selectedNode,
     phase: state.phase,
-    showDiagrams: state.engine === 'canvas' && BEAM_MODELS.has(state.modelId),
   };
+  // M/V panel: gerenda-modelleknél adatok, egyébként üres
+  if (state.engine === 'canvas' && BEAM_MODELS.has(state.modelId)) {
+    mvPanel.setData(lastMesh, lastSol);
+  } else {
+    mvPanel.clear();
+  }
   if (state.engine === 'webgl') {
     if (webglRenderer) {
       webglRenderer.render(lastMesh, lastSol, common);

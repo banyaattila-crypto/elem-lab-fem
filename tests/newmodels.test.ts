@@ -112,6 +112,42 @@ describe('M/V diagramok — analitikus validáció', () => {
     expect(Math.abs(midV(samples, midX).shear)).toBeLessThan(expectedV * 0.4);
   });
 
+  it('egyszerű tartás + KÖZÉPI PONTTERHELÉS: M(L/2) = PL/4 · W, V ugrás ±P/2', () => {
+    const P = 2400;
+    const L = 4;
+    const mesh = buildSimplySupported({ L, H: 0.4, thickness: 0.02, loadN: P, density: 4, loadType: 'point' });
+    const sol = solve(mesh);
+    const samples = sampleDiagrams(mesh, sol);
+    expect(samples.length).toBeGreaterThan(3);
+
+    const W = 0.02 * 0.4 * 0.4 / 6;
+    const midX = L / 2;
+    const near = samples.reduce((best, s) => (Math.abs(s.x - midX) < Math.abs(best.x - midX) ? s : best));
+    const far = samples.reduce((best, s) => (Math.abs(s.x - 0.05) < Math.abs(best.x - 0.05) ? s : best));
+
+    // (1) M-profil háromszög: csúcs középen, ~0 a tartóknál
+    expect(Math.abs(near.sigmaTop)).toBeGreaterThan(Math.abs(far.sigmaTop) * 4);
+
+    // (2) abszolút skála: Δσ(L/2) = (P·L/4)/W — CST ±35% sáv
+    const expected = (P * L) / 4 / W;
+    expect(Math.abs(near.sigmaTop)).toBeGreaterThan(expected * 0.65);
+    expect(Math.abs(near.sigmaTop)).toBeLessThan(expected * 1.35);
+
+    // (3) V = dM/dx: a közép két oldalán |V| ≈ P/2, előjelváltás a középen
+    const left = samples.filter((s) => s.x > 0.5 && s.x < midX - 0.3);
+    const right = samples.filter((s) => s.x > midX + 0.3 && s.x < L - 0.5);
+    const vLeft = left.reduce((a, s) => a + Math.abs(s.shear), 0) / Math.max(left.length, 1);
+    const vRight = right.reduce((a, s) => a + Math.abs(s.shear), 0) / Math.max(right.length, 1);
+    expect(vLeft).toBeGreaterThan((P / 2) * 0.65);
+    expect(vLeft).toBeLessThan((P / 2) * 1.35);
+    expect(vRight).toBeGreaterThan((P / 2) * 0.65);
+    expect(vRight).toBeLessThan((P / 2) * 1.35);
+    // előjelváltás: a közép bal oldalán és jobb oldalán ellenkező előjelű V
+    const sLeft = samples.reduce((best, s) => (Math.abs(s.x - (midX - 0.6)) < Math.abs(best.x - (midX - 0.6)) ? s : best));
+    const sRight = samples.reduce((best, s) => (Math.abs(s.x - (midX + 0.6)) < Math.abs(best.x - (midX + 0.6)) ? s : best));
+    expect(sLeft.shear * sRight.shear).toBeLessThan(0);
+  });
+
   it('konzolgerenda + végponti terhelés: M a befogásnál max, a szabad végen ~0; V állandó', () => {
     const P = 1500;
     const L = 2;
