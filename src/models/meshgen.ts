@@ -71,6 +71,11 @@ export function compactNodes(
   return { nodes: kept, elements: remapped, remap };
 }
 
+/** Háromszög területe (CCW: pozitív) */
+export function triangleArea(p1: Node, p2: Node, p3: Node): number {
+  return 0.5 * ((p2.x - p1.x) * (p3.y - p1.y) - (p3.x - p1.x) * (p2.y - p1.y));
+}
+
 /** CB fő anyagok — közös katalógus */
 export const MATERIALS = {
   steel: { name: 'S235 acél', E: 210e9, nu: 0.3, density: 7850 },

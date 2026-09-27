@@ -4,8 +4,13 @@
  * Klasszikus feszültségkoncentrációs példa:
  *   σ_max ≈ 3σ₀ a lyuk szélén (Kt ≈ 3, d/W → 0 határeset)
  *
- * A háló: strukturált rács, majd a körlyukon belüli elemek eltávolítása.
- * Az X-irányú húzást a bal/jobb él csomópontjain elosztott erőként visszük be.
+ * Háló: strukturált rács, a körlyukon belüli elemek eltávolítása.
+ *
+ * ISMERT KORLÁT (mérve, 2026-09-26): a lépcsős lyukhatár újrameneti sarkai
+ * szinguláris pontok, a mért Kt durva–közepes hálón 4,1–5,0 (készített
+ * körre-projekciós kísérlet szilánk-háromszögek miatt rosszabb volt és
+ * a sűrűséggel divergált → visszavonva, lásd STATUS_REPORT.md napló).
+ * A pontos Kt≈3 valódi határkövető hálót (Delaunay/advancing-front) igényel.
  */
 
 import type { Element, Mesh, Vec2 } from '../fem/types';
@@ -40,7 +45,6 @@ export function buildPlateWithHole(opts: PlateWithHoleOptions = {}): Mesh {
     throw new Error('A lyuk sugara kisebb legyen, mint W/2 és H/2');
   }
 
-  // Háló sűrűség: a lyuk környékén sűrűbb kellene legyen, MVP-ben egységes
   const nx = Math.max(16, 10 * density);
   const ny = Math.max(24, Math.round((nx * H) / W));
 
@@ -65,7 +69,6 @@ export function buildPlateWithHole(opts: PlateWithHoleOptions = {}): Mesh {
   const { nodes, elements } = compactNodes(grid.nodes, keptElements);
 
   // Terhelés: σ₀ elosztva a bal és jobb él csomópontjain
-  // ΔF = σ₀ · t · élcsík-magasság, élcsík = H / ny
   const edgeStrip = H / ny;
   const edgeForce = sigma0 * thickness * edgeStrip;
 
@@ -80,14 +83,8 @@ export function buildPlateWithHole(opts: PlateWithHoleOptions = {}): Mesh {
     if (atLeft) loads[n.id] = { x: -edgeForce, y: 0 };
     if (atRight) loads[n.id] = { x: edgeForce, y: 0 };
 
-    // Merevtest-mozgások kizárása: bal alsó sarok teljesen rögzít,
-    // jobb alsó sarok csak Y-ban mozoghat.
     if (atBottom && atLeft) fixed.push(n.id);
   }
-
-  // Megjegyzés: a „csak Y irányú" rögzítés nem modellezhető közvetlenül a
-  // jelenlegi BC-formátumban (fixed = mindkét DOF); az egyensúly a bal alsó
-  // sarok rögzítésével és a szimmetrikus terheléssel biztosított.
 
   return {
     nodes,

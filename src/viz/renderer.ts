@@ -18,6 +18,8 @@ export interface RenderOptions {
   highlight?: number | null;
   /** Kiemelendő csomópont id-ja (vagy null) */
   highlightNode?: number | null;
+  /** Animációs fázis [0..1]: 0 = deformálatlan, 1 = teljes deformáció (alapérték 1) */
+  phase?: number;
 }
 
 export const DEFAULT_RENDER_OPTIONS: RenderOptions = {
@@ -75,10 +77,11 @@ export class Renderer {
     this.lastView = { pad, scale, minX: b.minX, minY: b.minY, canvasHeight: height };
 
     // világ → képernyő transzformáció (deformált koordinátákkal)
+    const phase = opts.phase ?? 1;
     const tx = (x: number, y: number, id: number) => {
       const d = sol.displacements.get(id) ?? { x: 0, y: 0 };
-      const dx = x + d.x * opts.deformationScale;
-      const dy = y + d.y * opts.deformationScale;
+      const dx = x + d.x * opts.deformationScale * phase;
+      const dy = y + d.y * opts.deformationScale * phase;
       return {
         sx: pad + (dx - b.minX) * scale,
         sy: height - pad - (dy - b.minY) * scale,

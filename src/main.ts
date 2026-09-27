@@ -43,7 +43,11 @@ const state = {
   defscale: 500,
   selectedElem: null as number | null,
   selectedNode: null as number | null,
+  animating: false,
+  phase: 1,
 };
+
+let rafId: number | null = null;
 
 /** Az utolsó megoldás — kattintáskor újraszámolás nélkül újrarajzolunk */
 let lastMesh: Mesh | null = null;
@@ -69,6 +73,7 @@ app.innerHTML = `
           <div class="legend-bar" id="legend-bar"></div>
           <span>max</span>
         </div>
+        <button id="anim-btn" class="anim-btn" aria-pressed="false">▶ Animáció indítása</button>
       </div>
       <section class="lesson-card" id="lesson-card"></section>
       <section class="results" id="results"></section>
@@ -124,7 +129,38 @@ function redraw(): void {
     showMeshEdges: true,
     highlight: state.selectedElem,
     highlightNode: state.selectedNode,
+    phase: state.phase,
   });
+}
+
+// ————— Deformáció-animáció —————
+
+function animateFrame(ts: number): void {
+  // 1.6 s teljes ciklus: 0→1→0 (sin² lengetés, gyengéd kiindulás/érkezés)
+  const t = (ts % 1600) / 1600;
+  state.phase = Math.sin(t * Math.PI) ** 2;
+  redraw();
+  rafId = requestAnimationFrame(animateFrame);
+}
+
+function toggleAnimation(): void {
+  state.animating = !state.animating;
+  const btn = document.querySelector<HTMLButtonElement>('#anim-btn')!;
+  const hu = getLang() === 'hu';
+  if (state.animating) {
+    btn.textContent = hu ? '⏸ Animáció leállítása' : '⏸ Stop animation';
+    btn.setAttribute('aria-pressed', 'true');
+    rafId = requestAnimationFrame(animateFrame);
+  } else {
+    btn.textContent = hu ? '▶ Animáció indítása' : '▶ Animate deformation';
+    btn.setAttribute('aria-pressed', 'false');
+    if (rafId != null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+    state.phase = 1;
+    redraw();
+  }
 }
 
 function updateMathPanel(): void {
@@ -308,6 +344,12 @@ function updateLesson(modelId: string, lang: Lang): void {
 function localizeStatic(lang: Lang): void {
   const sub = document.querySelector<HTMLParagraphElement>('#subtitle')!;
   sub.textContent = lang === 'hu' ? 'Végeselem-módszer játszótér' : 'Finite Element Method playground';
+  const animBtn = document.querySelector<HTMLButtonElement>('#anim-btn');
+  if (animBtn && !state.animating) {
+    animBtn.textContent = lang === 'hu' ? '▶ Animáció indítása' : '▶ Animate deformation';
+  } else if (animBtn) {
+    animBtn.textContent = lang === 'hu' ? '⏸ Animáció leállítása' : '⏸ Stop animation';
+  }
   // modellcímkék frissítése a selectben
   const sel = document.querySelector<HTMLSelectElement>('#model-select');
   if (sel) {
@@ -351,5 +393,6 @@ import { getLang } from './ui/i18n';
 setLang('hu');
 controls.render(MODEL_OPTIONS);
 renderLegend();
+document.querySelector<HTMLButtonElement>('#anim-btn')!.addEventListener('click', toggleAnimation);
 resizeCanvas();
 rebuildAndSolve();

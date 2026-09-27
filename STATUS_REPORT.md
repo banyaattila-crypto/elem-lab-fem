@@ -186,3 +186,6 @@ A teljes, képletekkel ellátott specifikáció: **[docs/fem-spec.md](docs/fem-s
 | 2026-09-26 | **Csomópont-vizsgálat (NodePanel)**: elmozdulás, terhelés, reakcióerő (R = K·u − f), környező elemek, erőegyensúly-levezetés; reakció-számítás a szolverben; kattintásban a csomópont elsőbbséget élvez; 7 új fizikai teszt (ΣR + ΣF = 0) → **27/27 zöld** |
 | 2026-09-26 | **Mobil polish**: 44px érintési célok, kompakt panelek, képlet-skálázás kis kijelzőn |
 | 2026-09-26 | **Repo publikus**: titok-szken tiszta, README.en.md, leírás + 8 topic (fem, education, …) — portfólióra kész |
+| 2026-09-26 | **Deformáció-animáció**: ▶/⏸ gomb a canvason, 1,6 s sin²-lengetés a deformálatlan és deformált alak között (requestAnimationFrame, aria-pressed, nyelvfüggetlen felirat) |
+| 2026-09-26 | **Kerek lyuk kísérlet — visszavonva**: körre-projekció + CCW-javítás szilánk-elemeket adott, a mért Kt 4,1→5,0 romlott a sűrűséggel (mérőteszttel igazolva); a Laplace-simítás bent maradt elemek nélkül üres foltokat hagyott. Tanulság: a pontos Kt≈3 valódi határkövető hálót (Delaunay/advancing-front) igényel — visszatérünk rá a T6 elemekkel együtt |
+| 2026-09-26 | **Mobil végigteszt**: touch-action manipulation (nincs 300 ms késleltetés), tap-highlight ki, overscroll-behavior; 27/27 teszt, build + füstteszt (HTTP 200) OK |
