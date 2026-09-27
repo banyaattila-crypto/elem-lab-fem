@@ -93,14 +93,12 @@ export class ControlsPanel {
       ),
     );
 
-    // 6) Számítás gomb
+    // 6) Számítás gomb + nyelvváltó egy sorban
     const btn = document.createElement('button');
     btn.id = 'solve-btn';
     btn.textContent = t('controls.solve');
     btn.addEventListener('click', () => this.cb.onSolve());
-    this.root.appendChild(btn);
 
-    // 7) Nyelvváltó
     const langDiv = document.createElement('div');
     langDiv.className = 'control-group lang-switch';
     const huBtn = document.createElement('button');
@@ -110,7 +108,11 @@ export class ControlsPanel {
     enBtn.textContent = 'EN';
     enBtn.addEventListener('click', () => this.cb.onLangChange('en'));
     langDiv.append(huBtn, enBtn);
-    this.root.appendChild(langDiv);
+
+    const actionRow = document.createElement('div');
+    actionRow.className = 'control-group actions';
+    actionRow.append(btn, langDiv);
+    this.root.appendChild(actionRow);
   }
 
   private select(

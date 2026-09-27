@@ -352,7 +352,7 @@ function updateMathPanel(): void {
 function resizeCanvas(): void {
   const wrap = canvas.parentElement!;
   canvas.width = wrap.clientWidth;
-  canvas.height = Math.max(360, Math.min(560, wrap.clientWidth * 0.62));
+  canvas.height = Math.max(400, Math.min(640, wrap.clientWidth * 0.7));
   webglRenderer?.setSize(canvas.width, canvas.height);
 }
 window.addEventListener('resize', () => {
