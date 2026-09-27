@@ -6,6 +6,36 @@
 import type { Mesh, SolutionResult } from '../fem/types';
 import { viridis } from './colormap';
 import type { ViewTransform } from './picking';
+import {
+  computeDimensionLines,
+  drawDimensionLines,
+  drawInfoPanel,
+} from './annotate';
+
+/** roundRect — régebbi böngészőkhöz fallback-kel */
+function roundRectPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+): void {
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(x, y, w, h, r);
+    return;
+  }
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
 
 export interface RenderOptions {
   /** Deformáció-nagyítás tényező (1 = valódi) */
@@ -199,6 +229,18 @@ export class Renderer {
 
     // Színskála-jelmagyarázat a vászonra rajzolva
     this.drawLegend(ctx, opts.stressMax, opts.deformationScale);
+
+    // Méretvonalak + anyag/keresztmetszet infó (csak 2D nézetben, alaphelyzetű zoom mellett is jól működik)
+    const v = this.lastView;
+    if (v) {
+      const worldToScreen = (x: number, y: number) => ({
+        sx: v.canvasWidth / 2 + (x - v.midX) * v.scale,
+        sy: v.canvasHeight / 2 - (y - v.midY) * v.scale,
+      });
+      const dims = computeDimensionLines(mesh, worldToScreen, v.scale);
+      drawDimensionLines(ctx, dims);
+      drawInfoPanel(ctx, mesh, width);
+    }
   }
 
   /**
@@ -213,10 +255,10 @@ export class Renderer {
     const y0 = height - 32;
 
     ctx.save();
-    // háttérpaneL
+    // háttérpanel
     ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
     ctx.beginPath();
-    ctx.roundRect(x0 - 8, y0 - 18, barW + 16, barH + 30, 6);
+    roundRectPath(ctx, x0 - 8, y0 - 18, barW + 16, barH + 30, 6);
     ctx.fill();
 
     // színskála (sűrű csíkozás = folytonos hatás)

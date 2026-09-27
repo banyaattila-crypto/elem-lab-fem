@@ -7,6 +7,9 @@ import './style.css';
 import { buildCantilever } from './models/cantilever';
 import { buildTrussBridge } from './models/trussBridge';
 import { buildPlateWithHole } from './models/plateWithHole';
+import { buildSimplySupported } from './models/simplySupported';
+import { buildPortalFrame } from './models/portalFrame';
+import { buildPlateTwoHoles } from './models/plateTwoHoles';
 import { convertToT6 } from './models/t6convert';
 import { solve } from './fem/solve';
 import { Renderer } from './viz/renderer';
@@ -26,14 +29,20 @@ import type { MaterialKey } from './models/meshgen';
 
 const MODEL_OPTIONS: ModelOption[] = [
   { id: 'cantilever', label: 'Konzolgerenda' },
+  { id: 'simplySupported', label: 'Egyszerűen tartott gerenda' },
+  { id: 'portalFrame', label: 'Portálkeret' },
   { id: 'trussBridge', label: 'Rácsos híd' },
   { id: 'plateWithHole', label: 'Lyukas lemez' },
+  { id: 'plateTwoHoles', label: 'Kétlyukú lemez' },
 ];
 
 const MODEL_LABELS: Record<string, Record<Lang, string>> = {
   cantilever: { hu: 'Konzolgerenda', en: 'Cantilever beam' },
+  simplySupported: { hu: 'Egyszerűen tartott gerenda', en: 'Simply supported beam' },
+  portalFrame: { hu: 'Portálkeret', en: 'Portal frame' },
   trussBridge: { hu: 'Rácsos híd', en: 'Truss bridge' },
   plateWithHole: { hu: 'Lyukas lemez', en: 'Plate with hole' },
+  plateTwoHoles: { hu: 'Kétlyukú lemez', en: 'Plate with two holes' },
 };
 
 type ParamKey = 'load' | 'density' | 'material' | 'defscale';
@@ -360,10 +369,16 @@ function currentMesh(): Mesh {
   switch (state.modelId) {
     case 'cantilever':
       return buildCantilever(opts);
+    case 'simplySupported':
+      return buildSimplySupported(opts);
+    case 'portalFrame':
+      return buildPortalFrame(opts);
     case 'trussBridge':
       return buildTrussBridge(opts);
     case 'plateWithHole':
       return buildPlateWithHole(opts);
+    case 'plateTwoHoles':
+      return buildPlateTwoHoles(opts);
     default:
       return buildCantilever(opts);
   }

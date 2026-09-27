@@ -45,6 +45,10 @@ export interface BoundaryConditions {
   fixed: number[];
   /** Csomópont-id → csomóponti erő [N] */
   loads: Record<number, Vec2>;
+  /** Csak vízszintes (X) rögzítés — vízszintes görgő/fal (opcionális) */
+  rollerX?: number[];
+  /** Csak függőleges (Y) rögzítés — függőleges támasz/görgő (opcionális) */
+  rollerY?: number[];
 }
 
 /** 2D háló síkfeszültség- vagy síkfeszültség-állapottal */
@@ -59,6 +63,18 @@ export interface Mesh {
   type: 'plane-stress' | 'plane-strain';
   /** Elem-típus: CST (lineáris, 3 csomópont) vagy T6 (kvadratikus, 6 csomópont) */
   elementType?: 'CST' | 'T6';
+  /** Rajz-annotációk metaadatai (méretvonalak, infópanel) — opcionális */
+  annotation?: MeshAnnotation;
+}
+
+/** Modell-leíró metaadatok a canvason való megjelenítéshez */
+export interface MeshAnnotation {
+  /** Keresztmetszet leírás, pl. „t×H = 20×400 mm" vagy „lemez t = 5 mm" */
+  section?: string;
+  /** Geometria-információ, pl. „L = 2 m · konzol" */
+  geom?: string;
+  /** Körlyukak (Ø méretvonalhoz) */
+  holes?: Array<{ cx: number; cy: number; r: number }>;
 }
 
 /** Egy elem feszültségállapota */

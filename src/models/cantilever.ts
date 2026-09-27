@@ -61,7 +61,16 @@ export function buildCantilever(opts: CantileverOptions = {}): Mesh {
     thickness,
     bc: { fixed, loads },
     type: 'plane-stress',
+    annotation: {
+      geom: `Konzolgerenda · L = ${fmtLen(L)}`,
+      section: `Keresztmetszet: t×H = ${(thickness * 1000).toFixed(0)}×${(H * 1000).toFixed(0)} mm`,
+    },
   };
+}
+
+/** Rövid hossz-formázó a metaadatokhoz */
+function fmtLen(m: number): string {
+  return m >= 1 ? `${m.toFixed(2)} m` : `${(m * 1000).toFixed(0)} mm`;
 }
 
 /** Analitikus hajlás összehasonlításhoz: δ = P·L³/(3·E·I), I = t·H³/12 */

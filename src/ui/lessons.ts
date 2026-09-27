@@ -10,6 +10,36 @@ export interface Lesson {
 }
 
 export const LESSONS: Record<string, Lesson> = {
+  simplySupported: {
+    title: {
+      hu: 'Miért a középen a legnagyobb a hajlás?',
+      en: 'Why is the deflection largest at midspan?',
+    },
+    body: {
+      hu: 'Egyszerűen tartott gerendán a hajlítónyomaték M(x) = P·x/2 a közép felé nő, a csúcspont középen: M = P·L/4. A bal csukló függőleges és vízszintes irányban tart, a jobb görgő csak függőlegesen — ezért a gerenda szabadon „lélegezhet": a vízszintes vegyhatás nem keletkezik. Hasonlítsd össze a konzolgerendával!',
+      en: 'In a simply supported beam the moment M(x) = P·x/2 grows toward midspan where it peaks at M = P·L/4. The left pin restrains both directions while the right roller allows horizontal movement — so no unwanted axial force builds up. Compare with the cantilever!',
+    },
+  },
+  portalFrame: {
+    title: {
+      hu: 'Keret: a sarokcsomó viszi át a nyomatéket',
+      en: 'Frames: the corner joint transfers the moment',
+    },
+    body: {
+      hu: 'A keret sarkainál a gerenda hajlítónyomatéka átfolyik az oszlopba — ez tartja a rendszert anélkül, hogy az oszlopok extra támaszt kapnának. Nézd meg a hőtérképen: a legnagyobb feszültség épp a sarkokban és a gerenda közepén van!',
+      en: 'At the frame corners the beam moment flows into the columns — this keeps the structure stable without extra supports. Watch the heatmap: the highest stress appears right at the corners and mid-span!',
+    },
+  },
+  plateTwoHoles: {
+    title: {
+      hu: 'Két lyuk: a nettó keresztmetszet szabálya',
+      en: 'Two holes: the net-section rule',
+    },
+    body: {
+      hu: 'A lyukak sávjában csak a nettó keresztmetszet viszi a terhelést: σ_nettó = σ₀·W/(W−d). A két lyuk között a feszültség még tovább koncentrálódik — ezért szakadnak itt a kötések! Változtasd az anyagot és a terhelést, és hasonlítsd össze az egylyukú lemezzel.',
+      en: 'In the hole row only the net section carries load: σ_net = σ₀·W/(W−d). Stress concentrates even more between the holes — that is where bolted joints crack! Change material and load, then compare with the single-hole plate.',
+    },
+  },
   cantilever: {
     title: {
       hu: 'Miért hajlik? Miért ott a legnagyobb feszültség?',

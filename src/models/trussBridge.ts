@@ -77,5 +77,14 @@ export function buildTrussBridge(opts: TrussBridgeOptions = {}): Mesh {
     thickness,
     bc: { fixed, loads },
     type: 'plane-stress',
+    annotation: {
+      geom: `Rácsos híd (Warren) · L = ${fmtLen(span)} · ${panels} mező`,
+      section: `Öv-keresztmetszet: t×h = ${(thickness * 1000).toFixed(0)}×${(height / 2.4 * 1000).toFixed(0)} mm`,
+    },
   };
+}
+
+/** Rövid hossz-formázó a metaadatokhoz */
+function fmtLen(m: number): string {
+  return m >= 1 ? `${m.toFixed(2)} m` : `${(m * 1000).toFixed(0)} mm`;
 }

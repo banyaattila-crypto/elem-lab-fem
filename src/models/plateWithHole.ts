@@ -93,7 +93,17 @@ export function buildPlateWithHole(opts: PlateWithHoleOptions = {}): Mesh {
     thickness,
     bc: { fixed, loads },
     type: 'plane-stress',
+    annotation: {
+      geom: `Lyukas lemez · ${fmtLen(W)}×${fmtLen(H)}`, 
+      section: `Lemez t = ${(thickness * 1000).toFixed(1)} mm · lyuk d = ${(2 * holeR * 1000).toFixed(0)} mm`,
+      holes: [{ cx, cy, r: holeR }],
+    },
   };
+}
+
+/** Rövid hossz-formázó a metaadatokhoz */
+function fmtLen(m: number): string {
+  return m >= 1 ? `${m.toFixed(2)} m` : `${(m * 1000).toFixed(0)} mm`;
 }
 
 /** Analitikus feszültségkoncentrációs tényező (d/W → 0 határeset): Kt = 3 */

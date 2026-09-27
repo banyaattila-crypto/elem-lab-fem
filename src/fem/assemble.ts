@@ -90,12 +90,19 @@ export function assemble(mesh: Mesh): AssembledSystem {
   return { K, f, n };
 }
 
-/** Rögzített csomópontok DOF-inak listája */
+/** Rögzített csomópontok DOF-inak listája (+ egyirányú görgő-támaszok) */
 export function collectFixedDofs(mesh: Mesh): number[] {
   const fixed: number[] = [];
   for (const nodeId of mesh.bc.fixed) {
     const [dx, dy] = nodeDofs(nodeId);
     fixed.push(dx, dy);
+  }
+  // Görgők: csak EGY szabadsági fok rögzített
+  for (const nodeId of mesh.bc.rollerX ?? []) {
+    fixed.push(nodeDofs(nodeId)[0]!);
+  }
+  for (const nodeId of mesh.bc.rollerY ?? []) {
+    fixed.push(nodeDofs(nodeId)[1]!);
   }
   return fixed;
 }
