@@ -105,7 +105,7 @@ canvas.addEventListener('click', (ev) => {
   const view = renderer.lastView;
   if (!view || !lastMesh) return;
   const rect = canvas.getBoundingClientRect();
-  const world = screenToWorld(ev.clientX - rect.left, ev.clientY - rect.top, view, view.minY);
+  const world = screenToWorld(ev.clientX - rect.left, ev.clientY - rect.top, view);
   // Kattintás-ergonómia: csomópont elsőbbség az elemekkel szemben.
   // Tolerancia = a legkisebb elemméret 30%-a, minimum a háló jellemző méretének töredéke.
   const tol = estimateTolerance(lastMesh);

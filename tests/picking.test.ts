@@ -25,14 +25,13 @@ describe('pointInTriangle', () => {
 
 describe('screenToWorld', () => {
   it('a renderer transzformációjának inverze', () => {
-    const t = { pad: 30, scale: 100, minX: 2, canvasHeight: 500 };
-    const minY = 1;
+    const t = { midX: 2, midY: 1, scale: 100, canvasWidth: 600, canvasHeight: 500 };
     // világból képernyőbe (renderer képlete), majd vissza
     const wx = 3.5;
     const wy = 2.25;
-    const sx = 30 + (wx - 2) * 100;
-    const sy = 500 - 30 - (wy - 1) * 100;
-    const world = screenToWorld(sx, sy, t, minY);
+    const sx = 600 / 2 + (wx - 2) * 100;
+    const sy = 500 / 2 - (wy - 1) * 100;
+    const world = screenToWorld(sx, sy, t);
     expect(world.x).toBeCloseTo(wx, 10);
     expect(world.y).toBeCloseTo(wy, 10);
   });

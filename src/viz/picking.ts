@@ -8,27 +8,31 @@ import type { Mesh } from '../fem/types';
 
 /** A renderer által használt világ→képernyő transzformáció paraméterei */
 export interface ViewTransform {
-  pad: number;
+  /** a modell (deformált befoglaló) vízszintes középvonala [világ egység] */
+  midX: number;
+  /** a modell (deformált befoglaló) függőleges középvonala [világ egység] */
+  midY: number;
+  /** világ→képernyő nagyítás [px / világ egység] */
   scale: number;
-  minX: number;
+  /** canvas szélessége [px] */
+  canvasWidth: number;
   /** canvas magassága [px] — az Y-tengely tükrözéséhez kell */
   canvasHeight: number;
 }
 
 /**
  * Képernyő-koordináta → világ-koordináta.
- * A renderer transzformációjának pontos inverze:
- *   sx = pad + (dx − minX)·scale ; sy = height − pad − (dy − minY)·scale
+ * A renderer transzformációjának pontos inverze (mindkét tengelyen középre igazított nézet):
+ *   sx = width/2 + (dx − midX)·scale ; sy = height/2 − (dy − midY)·scale
  */
 export function screenToWorld(
   sx: number,
   sy: number,
   t: ViewTransform,
-  minY: number,
 ): { x: number; y: number } {
   return {
-    x: t.minX + (sx - t.pad) / t.scale,
-    y: minY + (t.canvasHeight - t.pad - sy) / t.scale,
+    x: t.midX + (sx - t.canvasWidth / 2) / t.scale,
+    y: t.midY + (t.canvasHeight / 2 - sy) / t.scale,
   };
 }
 

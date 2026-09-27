@@ -32,7 +32,7 @@ export class Renderer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   /** Az utolsó render világ→képernyő transzformációja (picking-hez) */
-  lastView: (ViewTransform & { minY: number }) | null = null;
+  lastView: ViewTransform | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -69,12 +69,21 @@ export class Renderer {
     ctx.fillRect(0, 0, width, height);
 
     const b = this.bounds(mesh);
-    const pad = 30;
-    const scale = Math.min(
-      (width - 2 * pad) / Math.max(b.w, 1e-9),
-      (height - 2 * pad) / Math.max(b.h, 1e-9),
-    );
-    this.lastView = { pad, scale, minX: b.minX, minY: b.minY, canvasHeight: height };
+    const pad = 40;
+    // A deformált alak is beleférjen: a maximális (phase = 1) deformált csomópont-
+    // pozíciók kiterjedését egyesítjük az alak befoglalójával. A nézet mindkét
+    // tengelyen középre igazít, így a rajz sosem lapul a keret aljára/oldalára.
+    const ext = deformationExtent(mesh, sol, opts.deformationScale);
+    const minX = Math.min(b.minX, ext.minX);
+    const maxX = Math.max(b.maxX, ext.maxX);
+    const minY = Math.min(b.minY, ext.minY);
+    const maxY = Math.max(b.maxY, ext.maxY);
+    const w = Math.max(maxX - minX, 1e-9);
+    const h = Math.max(maxY - minY, 1e-9);
+    const scale = Math.min((width - 2 * pad) / w, (height - 2 * pad) / h);
+    const midX = (minX + maxX) / 2;
+    const midY = (minY + maxY) / 2;
+    this.lastView = { midX, midY, scale, canvasWidth: width, canvasHeight: height };
 
     // világ → képernyő transzformáció (deformált koordinátákkal)
     const phase = opts.phase ?? 1;
@@ -83,8 +92,8 @@ export class Renderer {
       const dx = x + d.x * opts.deformationScale * phase;
       const dy = y + d.y * opts.deformationScale * phase;
       return {
-        sx: pad + (dx - b.minX) * scale,
-        sy: height - pad - (dy - b.minY) * scale,
+        sx: width / 2 + (dx - midX) * scale,
+        sy: height / 2 - (dy - midY) * scale,
       };
     };
 
@@ -174,6 +183,32 @@ export class Renderer {
       }
     }
   }
+}
+
+/**
+ * A maximálisan deformált alak (phase = 1) befoglaló téglalapja.
+ * A kisebb fázisú animációk e két alak konvex kombinációja, így az erre
+ * méretezett nézet minden fázisban kívül eső részt nem vág le.
+ */
+function deformationExtent(
+  mesh: Mesh,
+  sol: SolutionResult,
+  deformationScale: number,
+): { minX: number; minY: number; maxX: number; maxY: number } {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const n of mesh.nodes) {
+    const d = sol.displacements.get(n.id) ?? { x: 0, y: 0 };
+    const x = n.x + d.x * deformationScale;
+    const y = n.y + d.y * deformationScale;
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  return { minX, minY, maxX, maxY };
 }
 
 function viridisCss(t: number): string {
