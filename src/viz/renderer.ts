@@ -7,6 +7,7 @@ import type { Mesh, SolutionResult } from '../fem/types';
 import { stressCss } from './colormap';
 import { isDarkTheme } from './theme';
 import type { ViewTransform } from './picking';
+import { GRID_PX, makeDotPattern } from './snap';
 import {
   computeDimensionLines,
   drawDimensionLines,
@@ -84,19 +85,6 @@ export class Renderer {
     this.ctx = ctx;
   }
 
-  /** Pontrács-minta (mérnöki papír): egyszer létrehozva, sokszorosítva */
-  private makeDotPattern(dark: boolean): CanvasPattern {
-    const c = document.createElement('canvas');
-    c.width = 26;
-    c.height = 26;
-    const g = c.getContext('2d')!;
-    g.fillStyle = dark ? 'rgba(148, 180, 220, 0.3)' : 'rgba(58, 84, 140, 0.5)';
-    g.beginPath();
-    g.arc(13, 13, 1.05, 0, Math.PI * 2);
-    g.fill();
-    return this.ctx.createPattern(c, 'repeat')!;
-  }
-
   /** Színpadi háttér: lágy színátmenet + pontrács + középponti ragyogás */
   private paintBackdrop(width: number, height: number): void {
     const ctx = this.ctx;
@@ -114,14 +102,11 @@ export class Renderer {
     ctx.fillRect(0, 0, width, height);
 
     if (!this.dotPattern || this.patternDark !== dark) {
-      this.dotPattern = this.makeDotPattern(dark);
+      this.dotPattern = makeDotPattern(ctx, dark, GRID_PX);
       this.patternDark = dark;
     }
-    ctx.save();
-    ctx.globalAlpha = dark ? 0.4 : 0.6;
     ctx.fillStyle = this.dotPattern;
     ctx.fillRect(0, 0, width, height);
-    ctx.restore();
 
     const gx = width / 2;
     const gy = height / 2;

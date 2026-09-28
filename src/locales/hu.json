@@ -13,6 +13,8 @@
   "controls.density": "Hálósűrűség",
   "controls.deformation": "Deformáció-nagyítás",
   "controls.solve": "Számítás indítása",
+  "controls.resetGeometry": "Geometria visszaállítása",
+  "controls.resetGeometryNone": "Nincs elhúzott csomópont",
   "controls.autoSolve": "Automatikus számítás",
   "result.maxDisplacement": "Max. elmozdulás",
   "result.maxVM": "Max. Von Mises feszültség",

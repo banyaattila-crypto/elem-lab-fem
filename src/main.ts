@@ -17,7 +17,7 @@ import {
   FRAME_MATERIALS,
   type FrameMaterialKey,
 } from './models/frames';
-import { solveFrame, findFrameBeamAt, findFrameNodeAt } from './fem/frame';
+import { solveFrame, findFrameBeamAt, findFrameNodeAt, nodeMoveIsSafe } from './fem/frame';
 import type { FrameModel, FrameSolution } from './fem/frame';
 import { Renderer } from './viz/renderer';
 import { WebGLRenderer } from './viz/webgl-renderer';
@@ -27,7 +27,8 @@ import { renderInspection } from './ui/mathpanel-view';
 import { inspectNode } from './ui/nodepanel';
 import { renderNodeInspection } from './ui/nodepanel-view';
 import { inspectFrameElement, renderFrameElementInspection, inspectFrameNode, renderFrameNodeInspection } from './ui/frameinspect';
-import { findElementAt, findNodeAt, screenToWorld } from './viz/picking';
+import { findElementAt, findNodeAt, screenToWorld, type ViewTransform } from './viz/picking';
+import { resolveSnap, type SnapResult } from './viz/snap';
 import { stressGradientCss } from './viz/colormap';
 import { MVPanel } from './viz/diagrams';
 import { FrameMVPanel } from './viz/frame-panel';
@@ -89,6 +90,13 @@ const state = {
   elementType: 'CST' as 'CST' | 'T6',
   /** Terhelés-típus: pontterhelés vagy elosztott (csak gerenda-modellek nél) */
   loadType: 'point' as 'point' | 'distributed',
+  /**
+   * A felhasználó által húzott csomópont-pozíciók (mágneses végpont).
+   * Külön tárolva, mert a modell minden újrabeállításkor újragenerálódik —
+   * a húzott geometriának viszont meg kell maradnia akkor is, ha közben a
+   * terhelést vagy az anyagot váltja a felhasználó.
+   */
+  frameNodeOverrides: {} as Record<number, { x: number; y: number }>,
 };
 
 let rafId: number | null = null;
@@ -280,15 +288,146 @@ let panning = false;
 let panStartX = 0;
 let panStartY = 0;
 let panMoved = false;
+
+// ————— Mágneses csomópont-húzás (vázmodellek) —————
+// A váz csomópontjai foghatók meg és húzhatók. A végpont a pontrácsra és a
+// szomszédos szakaszok végpontjaira pattan (mágnes), Alt lenyomva szabad mozgás.
+
+/** A fogantyú megragadási sugara [px] — nem a kattintási tűrés, az túl széles */
+const NODE_GRAB_PX = 12;
+
+let draggingNode: number | null = null;
+/** A húzás kezdeti pozíciója — Escape-re ide állunk vissza */
+let dragOrigin: { x: number; y: number } | null = null;
+/** Az utolsó pillanýítás (visszajelző gyűrűhöz); 'none' → nincs jelzés */
+let dragSnap: SnapResult | null = null;
+
+/** Képernyő- és világkoordináta a canvas rectből */
+function canvasWorld(ev: { clientX: number; clientY: number }, view: ViewTransform): { x: number; y: number } {
+  const rect = canvas.getBoundingClientRect();
+  return screenToWorld(ev.clientX - rect.left, ev.clientY - rect.top, view);
+}
+
+/** Van-e csomópont a mutató alatt? (kurzorkezdés + megragadás) */
+function nodeUnderPointer(ev: { clientX: number; clientY: number }): number | null {
+  if (!isFrame()) return null;
+  const model = lastFrameModel;
+  const view = frameRenderer.lastView;
+  if (!model || !view) return null;
+  const w = canvasWorld(ev, view);
+  return findFrameNodeAt(model, w.x, w.y, NODE_GRAB_PX / view.scale);
+}
+
+/** true, ha sikerült megragadni (ilyenkor NEM paneltunk) */
+function beginNodeDrag(ev: PointerEvent): boolean {
+  const model = lastFrameModel;
+  const view = frameRenderer.lastView;
+  const id = nodeUnderPointer(ev);
+  if (!model || !view || id == null) return false;
+  const node = model.nodes.find((n) => n.id === id);
+  if (!node) return false;
+  draggingNode = id;
+  dragOrigin = { x: node.x, y: node.y };
+  dragSnap = null;
+  state.selectedNode = id;
+  state.selectedElem = null;
+  panMoved = true; // a húzás ne essen át kattintásvá → ne legyen kijelölés
+  canvas.style.cursor = 'grabbing';
+  setTab('inspect'); // az élő csomópont-adatok legyenek láthatók húzás közben
+  redraw();
+  return true;
+}
+
+/** Élő mozgatás: pillanýítás, felülírás, azonnali újraszámolás */
+function moveDraggedNode(ev: PointerEvent): void {
+  const model = lastFrameModel;
+  const view = frameRenderer.lastView;
+  if (!model || !view || draggingNode == null) return;
+  const node = model.nodes.find((n) => n.id === draggingNode);
+  if (!node) return;
+  const w = canvasWorld(ev, view);
+  const snap = resolveSnap(w.x, w.y, model, view, draggingNode, {
+    enabled: !ev.altKey, // Alt = pillanýítás nélküli szabad mozgás
+  });
+  // A mágnes szándékosan a szomszédos végpontra is rátaszít — de nulla
+  // hosszú rúdban a megoldó NaN-t adna, ezért ezt a mozgást elutasítjuk.
+  if (!nodeMoveIsSafe(model, draggingNode, snap.x, snap.y)) {
+    dragSnap = null; // nincs gyűrű: a cél érvénytelen volt
+    redraw();
+    return;
+  }
+  const moved = node.x !== snap.x || node.y !== snap.y;
+  node.x = snap.x;
+  node.y = snap.y;
+  state.frameNodeOverrides[node.id] = { x: snap.x, y: snap.y };
+  dragSnap = snap.kind === 'none' ? null : snap;
+  // Élő megoldás: a húzott végpont alakítsa azonnal a feszültségi képet.
+  // A rács miatt a legtöbb mozgás nem változtat pozíciót → ekkor nincs miért
+  // újraoldani (a feszültségi kép is változatlan marad).
+  if (moved) lastFrameSol = solveFrame(model, { samplesPerBeam: state.density });
+  updateDragReadout(model, node.id, snap);
+  redraw();
+}
+
+/**
+ * Húzás közbeni élő kiolvasó a méret-chip helyén: a fogantyú világkoordinátája
+ * és hogy mit kapott el. Ez az, amivel a „mágneses" érzés ellenőrizhető —
+ * látszik, hogy a számok pontrácsra kerekítve ugyanazok minden alkalommal,
+ * és a csomópont-mágnesnél épp egy másik csomópont számaira ugranak.
+ * A szülő `rebuildAndSolve()` hívás állítja vissza a szokásos feliratot.
+ */
+function updateDragReadout(model: FrameModel, nodeId: number, snap: SnapResult): void {
+  const el = document.querySelector<HTMLDivElement>('#mesh-stats');
+  if (!el) return;
+  const node = model.nodes.find((n) => n.id === nodeId);
+  if (!node) return;
+  const hu = getLang() === 'hu';
+  const target =
+    snap.nodeId != null && snap.nodeId !== nodeId
+      ? ` → ${hu ? 'csomópont' : 'node'} ${snap.nodeId}`
+      : snap.kind === 'grid'
+        ? ` · ${hu ? 'rács' : 'grid'}`
+        : snap.kind === 'none'
+          ? ` · ${hu ? 'szabad' : 'free'}`
+          : '';
+  el.textContent = `x = ${node.x.toFixed(3)} ${hu ? 'm' : 'm'} · y = ${node.y.toFixed(3)} m${target}`;
+}
+
+/** Befejezés: teljes felülírás (eredmények, statisztika, matematikai panel) */
+function finishNodeDrag(cancel = false): void {
+  if (draggingNode == null) return;
+  if (cancel && dragOrigin) {
+    state.frameNodeOverrides[draggingNode] = { x: dragOrigin.x, y: dragOrigin.y };
+  }
+  draggingNode = null;
+  dragOrigin = null;
+  dragSnap = null;
+  canvas.style.cursor = '';
+  // A nézet maradjon a helyén: a felhasználó nem egy új modellt választott,
+  // hanem egy meglévő csomópontot húzott el.
+  frameRenderer.preserveView();
+  rebuildAndSolve();
+  renderControls(); // a visszaállító gomb mostantól aktív
+}
+
 canvas.addEventListener('pointerdown', (ev) => {
   if (state.engine !== 'canvas' || ev.button !== 0) return;
+  if (beginNodeDrag(ev)) return;
   panning = true;
   panMoved = false;
   panStartX = ev.clientX;
   panStartY = ev.clientY;
 });
 window.addEventListener('pointermove', (ev) => {
-  if (!panning) return;
+  if (draggingNode != null) {
+    moveDraggedNode(ev);
+    return;
+  }
+  if (!panning) {
+    // Kurzorkezdés: a csomópont megfogható → ezt mutassuk
+    canvas.style.cursor = nodeUnderPointer(ev) != null ? 'grab' : '';
+    return;
+  }
   const dsx = ev.clientX - panStartX;
   const dsy = ev.clientY - panStartY;
   panStartX = ev.clientX;
@@ -299,6 +438,11 @@ window.addEventListener('pointermove', (ev) => {
 });
 window.addEventListener('pointerup', () => {
   panning = false;
+  if (draggingNode != null) finishNodeDrag();
+});
+window.addEventListener('keydown', (ev) => {
+  if (ev.key !== 'Escape' || draggingNode == null) return;
+  finishNodeDrag(true); // megszakítás → vissza a húzás előtti helyre
 });
 canvas.addEventListener('dblclick', () => {
   if (state.engine !== 'canvas') return;
@@ -338,6 +482,8 @@ function redraw(): void {
       highlight: state.selectedElem,
       highlightNode: state.selectedNode,
       phase: state.phase,
+      dragNode: draggingNode,
+      snap: dragSnap,
     });
     return;
   }
@@ -620,8 +766,12 @@ const controls = new ControlsPanel(
   {
     onModelChange: (id) => {
       state.modelId = id;
+      // Más modell más csomópont-számozás → a húzott geometria nem vihető át
+      state.frameNodeOverrides = {};
+      state.selectedNode = null;
+      state.selectedElem = null;
       updateFrameUiState();
-      controls.render(MODEL_OPTIONS, { modelId: state.modelId, loadType: state.loadType, material: currentMaterial() }, currentMaterialList());
+      renderControls();
       rebuildAndSolve(true);
     },
     onParamChange: (param, value) => {
@@ -633,15 +783,40 @@ const controls = new ControlsPanel(
       state.loadType = lt;
       rebuildAndSolve(true);
     },
+    onResetGeometry: () => {
+      if (Object.keys(state.frameNodeOverrides).length === 0) return;
+      state.frameNodeOverrides = {};
+      // Itt a nézet VISZONT visszaáll: a modell az eredeti kiterjedéséhez
+      // tér vissza, és egy esetleg razozott nézet félre kerülne.
+      rebuildAndSolve(true);
+    },
     onLangChange: (lang) => {
       setLang(lang);
       localizeStatic(lang);
-      controls.render(MODEL_OPTIONS, { modelId: state.modelId, loadType: state.loadType, material: currentMaterial() }, currentMaterialList());
+      renderControls();
       updateLesson(state.modelId, lang);
       rebuildAndSolve();
     },
   },
 );
+
+/**
+ * A vezérlőpanel frissítése a jelenlegi állapottól. Egyetlen helyen, hogy a
+ * gomb tiltottsága (van-e elhúzott csomópont) ne csoljon el a hívóktól.
+ */
+function renderControls(): void {
+  controls.render(
+    MODEL_OPTIONS,
+    {
+      modelId: state.modelId,
+      loadType: state.loadType,
+      material: currentMaterial(),
+      frame: isFrame(),
+      geometryEdited: Object.keys(state.frameNodeOverrides).length > 0,
+    },
+    currentMaterialList(),
+  );
+}
 
 function applyParam(key: ParamKey, value: number | string): void {
   if (key === 'load' && typeof value === 'number') state.load = value;
@@ -703,18 +878,35 @@ function currentFrameModel(): FrameModel {
   };
   switch (state.modelId) {
     case 'cantilever':
-      return buildFrameCantilever(opts);
+      return applyFrameNodeOverrides(buildFrameCantilever(opts));
     case 'simplySupported':
-      return buildFrameSimplySupported(opts);
+      return applyFrameNodeOverrides(buildFrameSimplySupported(opts));
     case 'fixedFixed':
-      return buildFrameFixedFixed(opts);
+      return applyFrameNodeOverrides(buildFrameFixedFixed(opts));
     case 'portalFrame':
-      return buildFramePortal(opts);
+      return applyFrameNodeOverrides(buildFramePortal(opts));
     case 'trussBridge':
-      return buildFrameTrussBridge(opts);
+      return applyFrameNodeOverrides(buildFrameTrussBridge(opts));
     default:
-      return buildFrameCantilever(opts);
+      return applyFrameNodeOverrides(buildFrameCantilever(opts));
   }
+}
+
+/**
+ * A húzott csomópontok ráíródnak az újragenerált modellre. Csak az azonos
+ * id-jú csomópontok mozognak; a támaszok és a terhek id alapján kötődnek,
+ * ezért a húzás magával viszi őket is.
+ */
+function applyFrameNodeOverrides(model: FrameModel): FrameModel {
+  const ov = state.frameNodeOverrides;
+  for (const node of model.nodes) {
+    const o = ov[node.id];
+    if (o) {
+      node.x = o.x;
+      node.y = o.y;
+    }
+  }
+  return model;
 }
 
 function rebuildAndSolve(flash = false): void {
@@ -1016,7 +1208,7 @@ try {
   initTabs();
   placeTabIndicator();
   document.querySelector<HTMLButtonElement>('#mv-toggle')!.addEventListener('click', toggleMVPanel);
-  controls.render(MODEL_OPTIONS, { modelId: state.modelId, loadType: state.loadType, material: currentMaterial() }, currentMaterialList());
+  renderControls();
   updateFrameUiState();
   const mvBtn = document.querySelector<HTMLButtonElement>('#mv-toggle');
   if (mvBtn) mvBtn.textContent = mvToggleLabel();

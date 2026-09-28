@@ -11,6 +11,7 @@ import type { Mesh, MeshAnnotation, SolutionResult, Vec2 } from '../fem/types';
 import { stressCss } from './colormap';
 import { isDarkTheme } from './theme';
 import type { ViewTransform } from './picking';
+import { GRID_PX, makeDotPattern, type SnapResult } from './snap';
 import {
   computeDimensionLines,
   drawDimensionLines,
@@ -27,6 +28,10 @@ export interface FrameRenderOptions {
   highlight?: number | null;
   highlightNode?: number | null;
   phase?: number;
+  /** Éppen húzott csomópont — a fogantyú gyűrűje */
+  dragNode?: number | null;
+  /** Az elkapott pillanýítási cél (mágneses ráugrás) */
+  snap?: SnapResult | null;
 }
 
 /** Hermite-alakfüggvények (a lokális transzverz lehajlás s-ben) */
@@ -133,12 +138,25 @@ export class FrameRenderer {
   panX = 0;
   panY = 0;
   private lastModelRef: FrameModel | null = null;
+  private dotPattern: CanvasPattern | null = null;
+  private patternDark = false;
+  /** A preserveView() egyszeri kérése — a következő modellváltás ismét állít */
+  private preserveNext = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Canvas 2D context nem elérhető (FrameRenderer)');
+    if (!ctx) throw new Error('Canvas 2D context nem érhető el (FrameRenderer)');
     this.ctx = ctx;
+  }
+
+  /**
+   * A következő rajzolás tartsa meg a nézetet (zoom/pan). Geometria-szerkesztés
+   * után kell: az új modell más objektum, és a default szabály visszaállítaná
+   * a nézetet — húzás közben ez zavaró ugrás lenne.
+   */
+  preserveView(): void {
+    this.preserveNext = true;
   }
 
   private paintBackdrop(width: number, height: number): void {
@@ -154,6 +172,15 @@ export class FrameRenderer {
       grad.addColorStop(1, '#f2ecff');
     }
     ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+
+    // Ugyanaz a pontrács, mint a lemez-felületen (közös modul) → a húzott
+    // végpont pont erre a rácsra ugrik, és a kettő nem csolhat el.
+    if (!this.dotPattern || this.patternDark !== dark) {
+      this.dotPattern = makeDotPattern(ctx, dark, GRID_PX);
+      this.patternDark = dark;
+    }
+    ctx.fillStyle = this.dotPattern;
     ctx.fillRect(0, 0, width, height);
   }
 
@@ -189,9 +216,12 @@ export class FrameRenderer {
     const baseScale = Math.min((width - 2 * pad) / w, (height - 2 * pad) / h2);
 
     if (model !== this.lastModelRef) {
-      this.zoom = 1;
-      this.panX = 0;
-      this.panY = 0;
+      if (!this.preserveNext) {
+        this.zoom = 1;
+        this.panX = 0;
+        this.panY = 0;
+      }
+      this.preserveNext = false;
       this.lastModelRef = model;
     }
     const midX = (minX + maxX) / 2 + this.panX;
@@ -324,6 +354,66 @@ export class FrameRenderer {
         ctx.beginPath();
         ctx.arc(p.sx, p.sy, 3.5, 0, Math.PI * 2);
         ctx.fill();
+      }
+    }
+
+    // ——— Mágneses húzás visszajelzése ———
+    // A fogantyú a DEFORMÁLATLAN geometrián mozog (ezt húzza a felhasználó),
+    // a céljelölés pedig a pillanýítás típusát mutatja színnel.
+    if (opts.dragNode != null) {
+      const node = model.nodes.find((n) => n.id === opts.dragNode);
+      if (node) {
+        const p = toScreen(node.x, node.y);
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.95)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.arc(p.sx, p.sy, 11, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.arc(p.sx, p.sy, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    if (opts.snap && opts.snap.kind !== 'none') {
+      const p = toScreen(opts.snap.x, opts.snap.y);
+      const color =
+        opts.snap.kind === 'node' ? '#fbbf24' : opts.snap.kind === 'grid' ? '#38bdf8' : '#34d399';
+      // Igazításnál vezetővonal: látszik, MELYIK tengely rögzült
+      if (opts.snap.kind === 'alignX' || opts.snap.kind === 'alignY') {
+        ctx.strokeStyle = 'rgba(52, 211, 153, 0.55)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 4]);
+        ctx.beginPath();
+        if (opts.snap.kind === 'alignX') {
+          ctx.moveTo(p.sx, 0); // X rögzült → függőleges egyenes
+          ctx.lineTo(p.sx, height);
+        } else {
+          ctx.moveTo(0, p.sy); // Y rögzült → vízszintes egyenes
+          ctx.lineTo(width, p.sy);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(p.sx, p.sy, 8, 0, Math.PI * 2);
+      ctx.stroke();
+      // fésű a csomópont-mágneshez: "itt van az eleje"
+      if (opts.snap.kind === 'node') {
+        ctx.beginPath();
+        ctx.moveTo(p.sx - 13, p.sy);
+        ctx.lineTo(p.sx - 8, p.sy);
+        ctx.moveTo(p.sx + 8, p.sy);
+        ctx.lineTo(p.sx + 13, p.sy);
+        ctx.moveTo(p.sx, p.sy - 13);
+        ctx.lineTo(p.sx, p.sy - 8);
+        ctx.moveTo(p.sx, p.sy + 8);
+        ctx.lineTo(p.sx, p.sy + 13);
+        ctx.stroke();
       }
     }
 

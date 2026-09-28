@@ -597,6 +597,32 @@ export function findFrameNodeAt(model: FrameModel, px: number, py: number, tol: 
   return Math.sqrt(best) <= tol ? bestId : null;
 }
 
+/**
+ * Érvényes-e egy csomópont adott helyre mozgatása? A mágneses pillanýítás
+ * szándékosan könnyen összapadásra ugorhat, és egy nulla hosszú rúdnál a
+ * `c = dx/L` 0/0 → NaN, ami az EGÉSZ merevességi mátrixot tönkreteszi. Ezért
+ * a szerkesztés ezt előre ellenőrzi, és nem engedi a rújat összezsugorodni.
+ *
+ * @param minLength legkisebb megengedett rúdhossz [m]
+ */
+export function nodeMoveIsSafe(
+  model: FrameModel,
+  nodeId: number,
+  x: number,
+  y: number,
+  minLength = 0.01,
+): boolean {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+  for (const beam of model.beams) {
+    const otherId = beam.nodeI === nodeId ? beam.nodeJ : beam.nodeJ === nodeId ? beam.nodeI : null;
+    if (otherId == null) continue;
+    const other = model.nodes[otherId];
+    if (!other) continue;
+    if (Math.hypot(other.x - x, other.y - y) < minLength) return false;
+  }
+  return true;
+}
+
 /** A rúd lokális elmozduláskomponensei a rajzolóhoz (Hermite-görbe) */
 export function frameBeamLocalDisp(
   model: FrameModel,

@@ -1,16 +1,24 @@
 /**
  * Feszültség-hőtérkép színtérképe.
  *
- * Egyárnyalatú kékskála: sötétkék → világoskék, monoton világossággal.
- * Egyetlen árnyalat, tehát a színnel nincs információverseny — a szín
- * kizárólag a feszültség nagyságát hordozza (klasszikus FEA-megjelenítés).
- * A sötét alkalmazói háttéren (--bg: #0f172a) a kis feszültség visszavonódik,
- * a csúcs pedig kiemelkedik.
+ * Egyárnyalatú kékskála, monoton világossággal. Egyetlen árnyalat, tehát a
+ * színnel nincs információverseny — a szín kizárólag a feszültség nagyságát
+ * hordozza (klasszikus FEA-megjelenítés).
+ *
+ * Az irány TÉMAFÜGGŐ, és ennek oka van: a maximális kontraszt érdekében a
+ * feszültség-csúcsnak mindig ki kell ugrania a vászon hátteréből.
+ *   világos téma (vászon #eef3ff): halvány kék → mély kék   (sötét a csúcs)
+ *   sötét téma   (vászon #0b1424): mély kék   → halvány kék (világos a csúcs)
+ * Fordított irányban a csúcs háttérbe olvadna: világos témán a világoskék
+ * eltűnik a fehér vászonon, sötét témán a mélykék a sötét háttéren.
  *
  * Az interpoláció Oklab-színtérben történik, nem sRGB-ben: így a színátmenet
- * egyenletes (nincs fényerő-ingadozás a lépcsők között) és a Canvas 2D, a
- * WebGL 3D és a HTML-legenda ugyanazt a skálát adja — egyetlen forrásból.
+ * egyenletes (a világosság szigorúan monoton, nincs lépcsők közötti
+ * fényerő-ingadozás), és a Canvas 2D, a WebGL 3D, az 1D váz-render és a
+ * HTML-legenda ugyanazt a skálát adja — egyetlen forrásból.
  */
+
+import { isDarkTheme } from './theme';
 
 /** RGB szín 0–255 tartományban */
 export interface RGB {
@@ -58,7 +66,9 @@ function oklabToRgb(L: number, A: number, B: number): RGB {
 
 // ————— Egyárnyalatú kék lámpatörpe —————
 
-/** Kontrolpontok t=0 (gyenge feszültség) … t=1 (maximális) */
+/** Kontrollpontok t=0 (mély kék) … t=1 (halvány kék) — ez a SÖTÉT háttérhez
+ *  való irány; világos háttéren a t értékét megfordítjuk, hogy a csúcs a
+ *  háttértől legtávolabb eső, legsötétebb szín legyen. */
 const ANCHORS: Array<[number, string]> = [
   [0.0, '#0a1830'],
   [0.125, '#10305c'],
@@ -84,9 +94,15 @@ const OKLAB_ANCHORS: Array<[number, number, number, number]> = ANCHORS.map(([t, 
 /**
  * t ∈ [0,1] → szín. A t értéket a hívó normalizálja (v / vMax).
  * Oklab-ben interpolálunk, ezért a lépcsők között nincs fényerő-ugrás.
+ *
+ * @param t    normalizált feszültség: 0 = nulla, 1 = maximális
+ * @param dark a vászon sötét hátterű-e; alapértelmezésben az aktuális téma
+ *             (`isDarkTheme()`), így a renderereknek nem kell szálazgatniuk.
  */
-export function stressRgb(t: number): RGB {
-  const x = Number.isFinite(t) ? Math.min(1, Math.max(0, t)) : 0;
+export function stressRgb(t: number, dark = isDarkTheme()): RGB {
+  const c = Number.isFinite(t) ? Math.min(1, Math.max(0, t)) : 0;
+  // világos háttéren megfordítunk, hogy a csúcs a legsötétebb legyen
+  const x = dark ? c : 1 - c;
   let i = 0;
   while (i < OKLAB_ANCHORS.length - 2 && x > OKLAB_ANCHORS[i + 1]![0]) i++;
   const a = OKLAB_ANCHORS[i]!;
@@ -96,19 +112,20 @@ export function stressRgb(t: number): RGB {
 }
 
 /** CSS szín-string (Canvas 2D fillStyle) */
-export function stressCss(t: number): string {
-  const { r, g, b } = stressRgb(t);
+export function stressCss(t: number, dark = isDarkTheme()): string {
+  const { r, g, b } = stressRgb(t, dark);
   return `rgb(${r},${g},${b})`;
 }
 
 /**
  * CSS lineáris gradiens a legendához. sok stoppal, hogy a böngésző ne
  * interpoláljon sRGB-ben nagy lépésekben — így a HTML-legenda pontosan
- * követi a Canvas/WebGL skálát.
+ * követi a Canvas/WebGL skálát. Az irány a témától függ, ugyanúgy, mint a
+ * rajzolt hőtérképé.
  */
-export function stressGradientCss(stops = 64): string {
+export function stressGradientCss(stops = 64, dark = isDarkTheme()): string {
   const n = Math.max(2, stops);
   const parts: string[] = [];
-  for (let i = 0; i < n; i++) parts.push(stressCss(i / (n - 1)));
+  for (let i = 0; i < n; i++) parts.push(stressCss(i / (n - 1), dark));
   return `linear-gradient(to right, ${parts.join(',')})`;
 }

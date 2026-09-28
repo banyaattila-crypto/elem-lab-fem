@@ -13,6 +13,8 @@
   "controls.density": "Mesh density",
   "controls.deformation": "Deformation scale",
   "controls.solve": "Run simulation",
+  "controls.resetGeometry": "Reset geometry",
+  "controls.resetGeometryNone": "No node has been dragged",
   "controls.autoSolve": "Auto-solve",
   "result.maxDisplacement": "Max. displacement",
   "result.maxVM": "Max. Von Mises stress",

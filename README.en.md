@@ -14,7 +14,7 @@ load, load type (point ⇄ distributed), material, mesh density — and watch th
 Von Mises stress heatmap and deformed shape update in real time. The entire
 solver is written in TypeScript and runs **client-side**: no backend, no uploads.
 The footer always shows which version and build you are looking at
-(`v0.14.0 · build …`).
+(`v0.15.0 · build …`).
 
 ## Highlights
 
@@ -40,10 +40,17 @@ The footer always shows which version and build you are looking at
 - 📈 **M/V panel with cursor readout**: bending-moment and shear-force diagrams on a dedicated canvas below the view — hover to read x, M(x) and V(x) values (beam models)
 - 🖱️ **Zoom/pan** in the 2D view (wheel = zoom at cursor, drag = pan,
   double-click = reset), plus a WebGL (Three.js) 3D view with orbit controls
+- 🧲 **Magnetic node dragging on the frame models**: the drawing surface is
+  dotted (engineering paper) and the **endpoints of the members are draggable** —
+  an endpoint snaps to the dot grid and to a neighbouring member's endpoint.
+  Stresses, reactions and the N/M/V panel re-solve live while dragging. Hold
+  `Alt` to bypass snapping, `Escape` to cancel the drag, and the
+  **“Reset geometry”** button to restore the original shape
 - 🏗️ **Seven models**: cantilever, simply supported beam, fixed–fixed beam,
   portal frame, corbel bracket, Warren truss bridge, plate with a hole
-- 🎨 Colorblind-friendly **single-hue blue** heatmap (Oklab interpolation, monotone
-  lightness) + deformed shape (Canvas 2D + WebGL)
+- 🎨 Colorblind-friendly **single-hue blue** heatmap (Oklab interpolation, strictly
+  monotone lightness; the ramp flips in light vs. night mode so the peak always
+  stands out from the canvas) + deformed shape (Canvas 2D + WebGL)
 - 📚 **Lesson cards** per model · 🌐 Hungarian / English · 📱 installable **PWA**
 - 📊 **Reaction values** next to the support symbols (R = … kN/N)
 - ✅ **62/62 validation tests** against analytic solutions (Vitest)
@@ -94,6 +101,7 @@ Honest list of what is **not** finished:
 | **No 1D bar element** | every model is a 2D triangle mesh; the truss bridge is a CST mesh, not a bar-element assembly |
 | **Distributed loads are horizontal, y-direction only** | the segment force q·L is shared consistently over the nodes it covers; it preserves the resultant, not the true stress field |
 | **T6 does not fix the stress concentration** | it does not solve the Kt problem, it does reduce the required mesh density |
+| **Map smoothness comes from the mesh, not the palette** | the colour step between adjacent elements is driven by the stress-field gradient: measured ΔE 0.085 (CST) vs. 0.057 (T6). Swapping the palette gained ~1% here — for a banded map, increase mesh density or element order |
 | **No accounts, cloud save or sharing** | the PWA works offline but persists nothing |
 
 ## Tech
@@ -103,11 +111,14 @@ KaTeX · Vitest · vite-plugin-pwa
 
 ## Status & roadmap
 
-🟢 **v0.14.0 live**: 1D frame solver (Euler–Bernoulli beam + truss bar) — 5 frame models
+🟢 **v0.15.0 live**: 1D frame solver (Euler–Bernoulli beam + truss bar) — 5 frame models
 (cantilever, SS, FF, portal frame, truss bridge) on a dedicated spring-aware 1D solver; N/M/V panel along the
 member layout, Hermite-curved deformed member drawing with σ heat band, member/node inspection (N, M, V, σ_top/bot),
 section & material catalogues (IPE/HEA, S235/S355/Al 6060/Glulam C24/Concrete C25/30); corbel and plate-with-hole
-stay on the CST/T6 path — 94/94 tests (16 new analytic benchmarks on the frame core), typecheck + build OK, Vercel deploy.
+stay on the CST/T6 path. v0.15.0 adds: **magnetic endpoint dragging** on the drawing surface (node magnet, axis
+alignment, dot grid — `Alt`/`Escape`), a denser engineering-paper dot grid, a **“Reset geometry”** button, a live
+coordinate readout while dragging, and a **theme-aware single-hue blue** heatmap (Oklab) so the peak always stands
+out from the background (1.19:1 → 15.9:1). **128/128 tests**, typecheck + build OK, Vercel deploy.
 Next: boundary-fitted mesh for an accurate Kt ≈ 3, 1D+2D hybrid models, geometry editor, portfolio page.
 
 ⚠️ *Educational demo — not for engineering decision-making!*

@@ -641,6 +641,33 @@ button:focus-visible {
   box-shadow: 0 8px 18px rgba(79, 70, 229, 0.3);
 }
 
+/* Geometria-visszaállító: másodlagos jellegű, és tiltva is mutatja a
+   jogosságát (nincs mit visszavonni) — ezért nem szabad "eltűnni" */
+#reset-geometry-btn {
+  width: 100%;
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: none;
+  font-size: 0.9rem;
+}
+
+#reset-geometry-btn:hover:not(:disabled) {
+  background: var(--grad-brand);
+  background-size: 160% 160%;
+  background-position: 100% 50%;
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.3);
+}
+
+#reset-geometry-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 /* ————— Fő játéktér ————— */
 
 .stage {
@@ -683,6 +710,15 @@ button:focus-visible {
 canvas {
   display: block;
   width: 100%;
+}
+
+/*
+ * A rajzfelületen nincs görgetés, csak húzás: a panelt ÉS a csomópont-mágneses
+ * húzást is ez a szabály engedi. `manipulation` mellett egy függőleges húzás
+ * görgetést indítana, és a végpont-húzás csak egérrel működne.
+ */
+.canvas-wrap canvas {
+  touch-action: none;
 }
 
 /* Méret-chip a vászon bal felső sarkában (modell nagysága) */

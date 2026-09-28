@@ -503,14 +503,94 @@ $s(t) = s_{\max}\,\sin^2(\pi t / T)$ a $T = 1{,}6$ s periódussal.
 
 A hőtérkép: $c = \mathcal{C}\!\left(\sigma_{\text{vM}}^{(e)} / \max_e \sigma_{\text{vM}}^{(e)}\right)$,
 ahol $\mathcal{C}$ az **egyárnyalatú kék** lámpatörpe (`src/viz/colormap.ts`): 9 kontrollpont
-#0a1830 → #c6e5f4, **Oklab-színtérben interpolálva**, így a színátmenet egyenletes
-(nincs fényerő-ingadozás a lépcsők között). Egyetlen árnyalat, monoton világossággal:
-a szín kizárólag a feszültség nagyságát hordozza. A Canvas 2D, a WebGL 3D és a
-HTML-legenda ugyanazt a $\mathcal{C}$-t használja, egyetlen forrásból.
+#0a1830 → #c6e5f4, **Oklab-színtérben interpolálva**. Egyetlen árnyalat, monoton
+világossággal: a szín kizárólag a feszültség nagyságát hordozza. A Canvas 2D, a WebGL 3D,
+az 1D váz-render és a HTML-legenda ugyanazt a $\mathcal{C}$-t használja, egyetlen forrásból.
+
+**Az irány témafüggő**, mert a csúcsnak mindig ki kell ugrania a vászon hátteréből:
+
+| Téma | Vászon | $t=0$ (nincs feszültség) | $t=1$ (csúcs) |
+|---|---|---|---|
+| világos | #eef3ff | halvány kék (1,19:1 kontraszt) | mély kék (15,9:1) |
+| sötét | #0b1424 | mély kék (1,04:1) | halvány kék (14,0:1) |
+
+Egyirányú skálával a világos témán a csúcs háttérbe olvadna (a #c6e5f4 a #eef3ff
+vászonon mindössze 1,19:1 kontrasztot ad) — ezért a `stressRgb(t, dark)` a világos
+témán megfordítja a tormapét. A szálazgatást nem kell a rendererekben végezni: a
+`dark` paraméter alapértelmezése az `isDarkTheme()`.
+
+*A miért:* az Oklab-interpoláció a perceptuális világosságot (L) tartja szigorúan monoton
+növekvőnek. Az 5 kontrollpontos, lineáris sRGB-ben interpolált skála **74 világosság-
+visszafordulást** adott 1000 mintán — ez a halvány világos-sötét hullámzás, amit a
+szem sávkódásként érzékel; a legkisebb pozitív L-lépés 0,00002-re esett, azaz a
+világosság a visszafordulások körül szinte megállt. Az új skálán: **0 visszafordulás**,
+és a legnagyobb L-lépés az átlag 3-szorosánál kisebb (egyenletes).
+
+*Mit NEM ér a skála:* a hőtérkép simaságát elsősorban a feszültségmező gradiensének
+gradiense határozza meg, nem a színtérkép. Mérve a konzolgerenda 320 elemén: az egymás
+mellé tetőző elemek színugrása (Oklab ΔE) átlagosan 0,085 CST-hálón és 0,057 T6-hálón —
+vagyis **a T6 elem csinálja a sima térképet, nem a színtérkép**, a skála cseréje itt
+mindössze ~1%-ot hoz. Ha a térkép „sávos", elsőként a hálósűrűséget és az elemet kell
+növelni, nem a színskálát módosítani.
 
 A 3D (WebGL) nézet ezen felül **csúcs-színezést** használ: a színt a csúcshoz kapcsolódó
 elemek $\sigma_{\text{vM}}$ értékeinek átlagából számolja, ami a folytonos mező
 közelítése egy véges elemhálón.
+
+### 7.5 Mágneses végpont-húzás (interakció, nem megoldó)
+
+A vázmodellek csomópontjai a rajzfelületen **húzhatók**; a végpont nem szabadon követi
+az egeret, hanem három rétegben „ugrál":
+
+$$\text{cél} = \arg\max \left\{ \text{csomópont} \succ \text{tengely-igazítás} \succ \text{pontrács} \right\}$$
+
+| Réteg | Feltétel (képernyő-px) | Eredmény |
+|---|---|---|
+| csomópont-mágnes | a mutató < 13 px-re van egy másik csomóponttól | a végpont **pontosan** arra a szakasz-végpontra kerül (zárt keret) |
+| tengely-igazítás | a mutató < 13 px-re van egy csomópont X- vagy Y-vonalától | csak az adott koordináta rögzül, a másik szabadon mozog (derékszög) |
+| pontrács | különben, ha a rácsléptő ≤ 0,5 m | a végpont a legközelebbi pontra ugrik |
+
+**A sorrend nem távolság szerinti.** A tengely-igazítás hibája egyetlen tengelyre vonatkozik,
+ezért mindig kisebb a kétirányú távolságnál — pusztán távolság szerint a végpont átugrana
+a szakasz végpontján, és soha nem oda érne. Ezért a `findMagnet` (`src/viz/snap.ts`) két
+szinten rendez: `TIER = { node: 0, alignX: 1, alignY: 1 }`, és csak azonos szinten dönt a
+távolság.
+
+**A pontok és a pillanýítás közös rács.** A pontrács rajzolása és a rácsra ugrás ugyanabban
+a modulban van (`GRID_PX = 17`, a pont a csempe közepén → `GRID_OFFSET_PX = 8,5`). Ha
+külön élnének, a `Math.round` fél léptővel arrébb landolna, és a végpont látszólag a pontok
+*mellett* megállna — a „mágneses" érzés így nem lenne valós. A kerekítés képernyő-térben
+történik, vissza világba fordítva, ezért zoomfüggetlen; a hatótávolságok is px-ben értendők.
+
+**Két megkötés:**
+
+- *Rács túl ritka.* Ha $\text{GRID\_PX}/\text{scale} > 0{,}5$ m, a rács kikapcsol, mert
+  erősen kizoomolva fél méteres ugrásokkal ráncigálná a geometriát. A csomópont-mágnes
+  ettől még él.
+- *Összapadás.* A csomópont-mágnes szándékosan rátaszítheti a végpontot a szomszédosra,
+  de nulla hosszú rúdnál a $\cos\alpha = \Delta x / L$ $0/0$ → `NaN`, és az **egész**
+  merevességi mátrix elszennyeződik. A `nodeMoveIsSafe()` (`src/fem/frame.ts`) ezért 1 cm-es
+  minimumot kikényszerít a szomszédos végponttól, és a szerkesztő elutasítja a mozgást.
+
+Húzás közben a modell **in-place** módosul, és csak akkor oldódik újra, ha a pillanýított
+pozíció tényleg változott (a rács miatt a mozgások többsége nem változtat pozíciót). Az
+elhúzott végpont az eredeti geometrián mozog — a felhasználó ezt húzza, nem a deformált alakot.
+A támaszok és terhek id-alapon kötődnek, ezért a húzás magával viszi őket is; a modell
+újragenerálásakor a `frameNodeOverrides` állomány tartja meg a geometriát (pl. terhelésváltás
+után is), modellváltáskor viszont törlődik, mert a csomópont-számozás megváltozik.
+
+**Visszavonás.** Az `Escape` csak az *éppen folyó* húzást vonja vissza, a korábbi húzásokat
+nem — ezért kellett külön visszaállítás. A vezérlőpanel **„Geometria visszaállítása"**
+gombja törli a `frameNodeOverrides`-ot, és a modell az eredeti generált geometriájára
+tér vissza. A gomb csak vázmodellnél jelenik meg, és **tiltva van**, ha nincs elhúzott
+csomópont (a tiltottság maga a jelzés: nincs mit visszavonni); húzás után aktíválódik.
+Különbség a szokásos modellezőkhöz képest: a gomb **nem** tartja meg a nézetet, mert
+a modell az eredeti kiterjedéséhez tér vissza, és egy esetleg razozott nézet félre kerülne.
+
+**A kiolvasó a „mágnesesség" ellenőrzésére.** Húzás közben a méret-chip helyén a fogantyú
+élő világkoordinátája látszik (`x = 3,250 m · y = 0,400 m`), utána jelölve, hogy mit kapott
+(`→ csomópont 2`, `· rács`, `· szabad`). Ez nem dísz: a pontok/igazítás/mágnes prioritása
+csak abból állapítható meg, hogy a számok adott célra mindig ugyanazok-e.
 
 ---
 

@@ -36,6 +36,22 @@ export function screenToWorld(
   };
 }
 
+/**
+ * Világkoordináta → képernyőkoordináta (a `screenToWorld` inverze).
+ * A húzott végpont képernyőpozíciójához kell: a pillanýítás képernyő-távolságokat
+ * számol, és a visszajelző gyűrű is ebben a rendszerben rajzolódik.
+ */
+export function worldToScreen(
+  wx: number,
+  wy: number,
+  t: ViewTransform,
+): { x: number; y: number } {
+  return {
+    x: t.canvasWidth / 2 + (wx - t.midX) * t.scale,
+    y: t.canvasHeight / 2 - (wy - t.midY) * t.scale,
+  };
+}
+
 /** Pont-tartalmazás háromszögben (bária centrikus / előjeles területek módszere) */
 export function pointInTriangle(
   px: number,

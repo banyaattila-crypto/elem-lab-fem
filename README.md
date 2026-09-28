@@ -10,7 +10,7 @@ Az ElemLab oktatási célú 2D végeselemes szimulátor: kész modelleket variá
 csúszkákkal (terhelés, terhelés-típus, anyag, hálósűrűség), és valós időben látod
 a feszültségmezőt színes hőtérképen, deformált geometriával. A teljes számítási
 motor TypeScriptben, közvetlenül a böngészőben fut — nincs háttérszerver.
-A láblécben mindig látod, melyik verziót és buildet nézed (`v0.14.0 · build …`).
+A láblécben mindig látod, melyik verziót és buildet nézed (`v0.15.0 · build …`).
 
 ## Funkciók
 
@@ -19,8 +19,9 @@ A láblécben mindig látod, melyik verziót és buildet nézed (`v0.14.0 · bui
 - 📐 **CST elem** (konstans feszültségű háromszög) és **T6 kvadratikus elem**
   (izoparaméteres, 3 pontos Gauss-kvadratúrával)
 - 🏗️ **7 kész modell** — gerendák, keret, tartó, rácsos híd, lemez (lásd lent)
-- 🎨 **Egyárnyalatú kék hőtérkép** (Oklab-interpoláció, monoton világosság,
-  színvakság-barát) + deformált alak — Canvas 2D **és**
+- 🎨 **Egyárnyalatú kék hőtérkép** (Oklab-interpoláció, színvakság-barát; világos és
+  éjszakai témában fordított irányban, hogy a csúcs mindig kiugranak a háttérből)
+  + deformált alak — Canvas 2D **és**
   WebGL (Three.js, csúcs-színes folytonos mező, forgatás/zoom/pan)
 - 📏 **Rajz-annotációk**: méretvonalak (hossz, magasság, lyuk-Ø),
   **támasz-szimbólumok** (befogás / csukló / görgő), **terhelés-nyilak**
@@ -32,6 +33,13 @@ A láblécben mindig látod, melyik verziót és buildet nézed (`v0.14.0 · bui
   értékeket (gerenda-modelleknél)
 - 🖱️ **Zoom/pan** a 2D nézetben (görgő = zoom az egér körül, húzás = mozgatás,
   dupla kattintás = visszaállítás)
+- 🧲 **Mágneses csomópont-húzás a vázmodelleken**: a rajzfelület apró pontokkal
+  van kitöltve (mérnöki papír), és a szakaszok **végpontjai húzhatók** — a
+  végpont a pontrácsra, illetve a szomszédos szakasz végpontjára pattan
+  („mágneses"). Közben a feszültségi kép, a reakciók és az N/M/V panel élben
+  számolódnak újra. `Alt` lenyomva a pillanýítás kikapcsol, `Escape` a húzást
+  megszakítja, a **„Geometria visszaállítása"** gomb pedig az eredeti alakot
+  hozza vissza. Részletek: [docs/fem-spec.md](docs/fem-spec.md) 7.5. fejezet
 - 🧮 **Valós idejű elem- és csomópontvizsgálat**: kattintásra teljes levezetés
   KaTeX-képletekkel, élő számokkal — geometria, D, B, kₑ, uₑ, ε, σ, Von Mises
   (CST módban; T6-ban a sarok-csúcsok adataival dolgozik — lásd a Korlátok részt)
@@ -114,6 +122,7 @@ docs/           # matematikai specifikáció + UI vázlat
 | **Nincs 1D rúdelem** | minden modell 2D háromszögháló; a rácsos híd is CST-háló, nem rúdélemes |
 | **Az elosztott terhelés csak vízszintes, $y$ irányú** | a szakasz teljes ereje ($q \cdot L$) konzisztensen megoszlik a rá eső csomópontok között; a valódi feszültségmező helyett az eredőerőt tartja meg |
 | **A T6 koncentrációja** | a Kt-problémát a T6 nem oldja meg, a hálósűrűséget igen |
+| **A térkép simasága a hálótól függ, nem a színskálától** | az egymás melletti elemek színugrása a feszültségmező gradiensének gradiense: mérve ΔE 0,085 (CST) vs. 0,057 (T6). A színtérkép cseréje itt ~1%-ot hozott — sávos térkép esetén a hálósűrűséget kell növelni |
 | **Nincs fiók, felhő-mentés, megosztás** | a PWA offline működik, de nincs perzisztencia |
 
 ## Technológia
@@ -123,11 +132,14 @@ KaTeX · Vitest · vite-plugin-pwa
 
 ## Állapot és tervek
 
-🟢 **v0.14.0 élő**: 1D váz-mag (Euler–Bernoulli rúdelem + rácsrúd) — 5 vázmodell (konzol, SS, FF, portálkeret, rácsos híd)
+🟢 **v0.15.0 élő**: 1D váz-mag (Euler–Bernoulli rúdelem + rácsrúd) — 5 vázmodell (konzol, SS, FF, portálkeret, rácsos híd)
 ül az előző 7 modellt leváltó, saját rugók+kényszerti 1D szolveren; N/M/V panel a rúdkiosztás mentén, Hermite-görbült
 deformált rúdrajz σ-hőtérképpel, rúd-/csomópont-vizsgálat (N, M, V, σ_top/bot), szelvény- és anyag-katalógus
-(IPE/HEA, S235/S355/Al 6060/Fa C24/Beton C25/30); a corbel és lyukas lemez a CST/T6 pályán maradt —
-94/94 teszt (16 új analitikus benchmark a rúd/rács magon), typecheck + build OK, Vercel deploy.
+(IPE/HEA, S235/S355/Al 6060/Fa C24/Beton C25/30); a corbel és lyukas lemez a CST/T6 pályán maradt. A v0.15.0
+ráépülve: **mágneses végpont-húzás** a rajzfelületen (csomópont-mágnes, tengely-igazítás, pontrács — `Alt`/`Escape`),
+sűrűbb mérnöki-papír pontrács, **„Geometria visszaállítása"**, élő kiolvasó húzás közben, és a színtérkép
+**témafüggő, egyárnyalatú kék** (Oklab) lett, hogy a csúcs mindkét témán kiugorjon a háttérből (1,19:1 → 15,9:1).
+**128/128 teszt**, typecheck + build OK, Vercel deploy.
 Tervek: határkövető háló a pontos Kt-hoz, 1D+2D hibrid modellek, saját geometriaszerkesztő, portfólióoldal.
 
 ⚠️ *Oktatási célú bemutató — mérnöki döntésre nem használható!*

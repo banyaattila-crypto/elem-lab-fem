@@ -13,6 +13,8 @@ export interface ControlsCallbacks {
   onLangChange: (lang: Lang) => void;
   /** Terhelés-típus váltás (pont ⇄ elosztott) */
   onLoadTypeChange: (loadType: 'point' | 'distributed') => void;
+  /** A húzott váz-geometria visszaállítása az eredetire (csak váznál aktív) */
+  onResetGeometry: () => void;
 }
 
 /** Gerenda-modellek, ahol a terhelés-típus választható */
@@ -39,7 +41,15 @@ export class ControlsPanel {
 
   render(
     modelOptions: ModelOption[],
-    current?: { modelId: string; loadType: 'point' | 'distributed'; material?: string },
+    current?: {
+      modelId: string;
+      loadType: 'point' | 'distributed';
+      material?: string;
+      /** Vázmodell → megjelenik a geometria-visszaállító gomb */
+      frame?: boolean;
+      /** Van-e elhúzott csomópont (a gomb ennek megfelelően aktív) */
+      geometryEdited?: boolean;
+    },
     materials?: ModelOption[],
   ): void {
     this.root.innerHTML = '';
@@ -125,6 +135,21 @@ export class ControlsPanel {
     actionRow.className = 'control-group actions';
     actionRow.append(btn, langDiv);
     this.root.appendChild(actionRow);
+
+    // 7) Geometria-visszaállítás — csak váznál, és csak ha tényleg van húzás.
+    // A gomb tiltott állapota önmagában is jelzi, hogy nincs mit visszavonni.
+    if (current?.frame) {
+      const reset = document.createElement('button');
+      reset.id = 'reset-geometry-btn';
+      reset.className = 'secondary';
+      reset.textContent = t('controls.resetGeometry');
+      reset.disabled = !current.geometryEdited;
+      reset.title = current.geometryEdited
+        ? t('controls.resetGeometry')
+        : t('controls.resetGeometryNone');
+      reset.addEventListener('click', () => this.cb.onResetGeometry());
+      this.root.appendChild(reset);
+    }
   }
 
   private select(
