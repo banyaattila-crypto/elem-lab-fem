@@ -16,6 +16,7 @@ import {
   drawReactionValues,
   drawLoadArrows,
   drawDistributedLoads,
+  drawCoordinateGlyph,
 } from './annotate';
 
 /** roundRect — régebbi böngészőkhöz fallback-kel */
@@ -56,6 +57,10 @@ export interface RenderOptions {
   highlightNode?: number | null;
   /** Animációs fázis [0..1]: 0 = deformálatlan, 1 = teljes deformáció (alapérték 1) */
   phase?: number;
+  /** Deformált alak kirajzolása (false = séma-mód, VEM nélküli modell) */
+  deformed?: boolean;
+  /** Feszültség-színezés (false = séma-mód, semleges szín) */
+  stressColors?: boolean;
 }
 
 export const DEFAULT_RENDER_OPTIONS: RenderOptions = {
@@ -156,7 +161,11 @@ export class Renderer {
     // A deformált alak is beleférjen: a maximális (phase = 1) deformált csomópont-
     // pozíciók kiterjedését egyesítjük az alak befoglalójával. A nézet mindkét
     // tengelyen középre igazít, így a rajz sosem lapul a keret aljára/oldalára.
-    const ext = deformationExtent(mesh, sol, opts.deformationScale);
+    // Séma-mód: deformáció és színezés kikapcsolva → a VEM nélküli modell látszik
+    const showDef = opts.deformed ?? true;
+    const showColors = opts.stressColors ?? true;
+    const defScale = showDef ? opts.deformationScale : 0;
+    const ext = deformationExtent(mesh, sol, defScale);
     const minX = Math.min(b.minX, ext.minX);
     const maxX = Math.max(b.maxX, ext.maxX);
     const minY = Math.min(b.minY, ext.minY);
@@ -180,8 +189,8 @@ export class Renderer {
     const phase = opts.phase ?? 1;
     const tx = (x: number, y: number, id: number) => {
       const d = sol.displacements.get(id) ?? { x: 0, y: 0 };
-      const dx = x + d.x * opts.deformationScale * phase;
-      const dy = y + d.y * opts.deformationScale * phase;
+      const dx = x + d.x * defScale * phase;
+      const dy = y + d.y * defScale * phase;
       return {
         sx: width / 2 + (dx - midX) * scale,
         sy: height / 2 - (dy - midY) * scale,
@@ -207,7 +216,11 @@ export class Renderer {
       ctx.lineTo(s2.sx, s2.sy);
       ctx.lineTo(s3.sx, s3.sy);
       ctx.closePath();
-      ctx.fillStyle = stressCss(t);
+      ctx.fillStyle = showColors
+        ? stressCss(t)
+        : isDarkTheme()
+          ? 'rgba(129, 152, 192, 0.38)'
+          : 'rgba(120, 145, 190, 0.30)';
       ctx.fill();
 
 if (opts.showMeshEdges) {
@@ -274,8 +287,8 @@ if (opts.showMeshEdges) {
       }
     }
 
-    // Színskála-jelmagyarázat a vászonra rajzolva
-    this.drawLegend(ctx, opts.stressMax, opts.deformationScale);
+    // Színskála-jelmagyarázat a vászonra rajzolva (séma-módban nincs értelme)
+    if (showColors) this.drawLegend(ctx, opts.stressMax, opts.deformationScale);
 
     // Méretvonalak + anyag/keresztmetszet infó (csak 2D nézetben, alaphelyzetű zoom mellett is jól működik)
     const v = this.lastView;
@@ -291,6 +304,7 @@ if (opts.showMeshEdges) {
       drawLoadArrows(ctx, mesh, worldToScreen);
       drawDistributedLoads(ctx, mesh, worldToScreen);
       drawInfoPanel(ctx, mesh, width);
+      drawCoordinateGlyph(ctx, width, height);
     }
   }
 

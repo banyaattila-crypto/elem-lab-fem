@@ -378,6 +378,67 @@ function fmtReaction(n: number): string {
   return Math.abs(n) >= 1000 ? `R = ${(n / 1000).toFixed(1)} kN` : `R = ${n.toFixed(0)} N`;
 }
 
+/**
+ * Mini koordinátarendszer a vászon bal alsó sarkába: x jobbra, y felfelé —
+ * ugyanabban az irányban, mint a világ (a képernyő Y-tengelye tükrözött).
+ * Vékony, témafüggő jel; a rajzot nem zavarja, a pontrácsra hívszerűen rááll.
+ */
+export function drawCoordinateGlyph(
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+): void {
+  const dark = isDarkTheme();
+  const stroke = dark ? 'rgba(154, 170, 193, 0.8)' : 'rgba(71, 92, 130, 0.8)';
+  const ox = 26;
+  const oy = canvasHeight - 26;
+  const ax = 46; // x-tengely hossza [px]
+  const ay = 44; // y-tengely hossza [px]
+
+  ctx.save();
+  ctx.strokeStyle = stroke;
+  ctx.fillStyle = stroke;
+  ctx.lineWidth = 1.4;
+  ctx.font = 'italic 12px system-ui, sans-serif';
+
+  // x tengely (jobbra) + nyílhegy
+  ctx.beginPath();
+  ctx.moveTo(ox, oy);
+  ctx.lineTo(ox + ax - 5, oy);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(ox + ax, oy);
+  ctx.lineTo(ox + ax - 7, oy - 3.2);
+  ctx.lineTo(ox + ax - 7, oy + 3.2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText('x', ox + ax + 5, oy - 6);
+
+  // y tengely (felfelé) + nyílhegy
+  ctx.beginPath();
+  ctx.moveTo(ox, oy);
+  ctx.lineTo(ox, oy - ay + 5);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(ox, oy - ay);
+  ctx.lineTo(ox - 3.2, oy - ay + 7);
+  ctx.lineTo(ox + 3.2, oy - ay + 7);
+  ctx.closePath();
+  ctx.fill();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('y', ox, oy - ay - 3);
+
+  // origó pont
+  ctx.beginPath();
+  ctx.arc(ox, oy, 2.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  void canvasWidth;
+}
+
 /** Infópanel kirajzolása a vászon bal felső sarkába */
 export function drawInfoPanel(
   ctx: CanvasRenderingContext2D,

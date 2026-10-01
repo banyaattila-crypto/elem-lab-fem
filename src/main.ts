@@ -90,6 +90,8 @@ const state = {
   elementType: 'CST' as 'CST' | 'T6',
   /** Terhelés-típus: pontterhelés vagy elosztott (csak gerenda-modellek nél) */
   loadType: 'point' as 'point' | 'distributed',
+  /** Séma-mód: VEM nélküli modell — deformáció és feszültség-színezés nélkül */
+  schemaMode: false,
   /**
    * A felhasználó által húzott csomópont-pozíciók (mágneses végpont).
    * Külön tárolva, mert a modell minden újrabeállításkor újragenerálódik —
@@ -179,6 +181,7 @@ app.innerHTML = `
           <button id="engine-canvas" class="active" title="Canvas 2D — gyors, 2D">2D</button>
           <button id="engine-webgl" title="WebGL — folytonos szín, forgatás">3D</button>
           <button id="elem-t6" title="Elem-típus: lineáris CST ⇄ kvadratikus T6">CST</button>
+          <button id="mode-schema" title="Séma — VEM nélküli modell: deformáció és feszültség-színezés nélkül">Séma</button>
         </div>
       </div>
       <div class="mv-panel" id="mv-panel">
@@ -484,10 +487,17 @@ function redraw(): void {
       phase: state.phase,
       dragNode: draggingNode,
       snap: dragSnap,
+      deformed: !state.schemaMode,
+      stressColors: !state.schemaMode,
     });
     return;
   }
   if (!lastMesh || !lastSol) return;
+  // Séma-mód csak 2D-ben él (a WebGL nem tudja a színtelen/deformálatlan módot)
+  if (state.engine === 'webgl' && state.schemaMode) {
+    state.engine = 'canvas';
+    setEngineButtons();
+  }
   const common = {
     deformationScale: state.defscale,
     stressMax: lastSol.maxVonMises || 1,
@@ -495,6 +505,8 @@ function redraw(): void {
     highlight: state.selectedElem,
     highlightNode: state.selectedNode,
     phase: state.phase,
+    deformed: !state.schemaMode,
+    stressColors: !state.schemaMode,
   };
   // M/V panel: gerenda-modelleknél adatok, egyébként üres
   if (state.engine === 'canvas' && BEAM_MODELS.has(state.modelId)) {
@@ -1026,6 +1038,14 @@ function localizeStatic(lang: Lang): void {
   if (mvToggle) {
     mvToggle.textContent = mvToggleLabel();
   }
+  // Séma-mód gomb felirata
+  const schemaBtn = document.querySelector<HTMLButtonElement>('#mode-schema');
+  if (schemaBtn) {
+    schemaBtn.textContent = lang === 'hu' ? 'Séma' : 'Model';
+    schemaBtn.title = lang === 'hu'
+      ? 'Séma — VEM nélküli modell: deformáció és feszültség-színezés nélkül'
+      : 'Model — without FEM results: no deformation and no stress coloring';
+  }
   // modellcímkék frissítése a selectben
   const sel = document.querySelector<HTMLSelectElement>('#model-select');
   if (sel) {
@@ -1107,7 +1127,19 @@ function setEngineButtons(): void {
   const t6 = document.querySelector<HTMLButtonElement>('#elem-t6')!;
   t6.textContent = state.elementType;
   t6.classList.toggle('active', state.elementType === 'T6');
+  const schema = document.querySelector<HTMLButtonElement>('#mode-schema');
+  if (schema) schema.classList.toggle('active', state.schemaMode);
 }
+
+// ————— Séma-mód: VEM nélküli modell (deformáció és színezés nélkül) —————
+
+document.querySelector<HTMLButtonElement>('#mode-schema')!.addEventListener('click', () => {
+  state.schemaMode = !state.schemaMode;
+  const legend = document.querySelector<HTMLDivElement>('#legend');
+  if (legend) legend.style.display = state.schemaMode ? 'none' : '';
+  setEngineButtons();
+  redraw();
+});
 
 document.querySelector<HTMLButtonElement>('#elem-t6')!.addEventListener('click', () => {
   state.elementType = state.elementType === 'CST' ? 'T6' : 'CST';
@@ -1188,7 +1220,16 @@ if (verEl) {
   verEl.title = `Teljes build-ID: ${BUILD_ID}`;
 }
 const topVerEl = document.querySelector<HTMLSpanElement>('#topver');
-if (topVerEl) topVerEl.textContent = `v${APP_VERSION}`;
+/** Rövid belső build-jel (hónapnap-óraperc): minden Vercel deploynál más → látszik, friss-e */
+const buildShort = (() => {
+  const d = new Date(BUILD_ID);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+})();
+if (topVerEl) {
+  topVerEl.textContent = `v${APP_VERSION} · b${buildShort}`;
+  topVerEl.title = `Belső build-ID: ${BUILD_ID}`;
+}
 console.info(`[ElemLab] v${APP_VERSION} · build ${BUILD_ID}`);
 window.ELEMLAB = { version: APP_VERSION, buildId: BUILD_ID };
 

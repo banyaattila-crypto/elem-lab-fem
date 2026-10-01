@@ -20,6 +20,7 @@ import {
   drawReactionValues,
   drawLoadArrows,
   drawDistributedLoads,
+  drawCoordinateGlyph,
 } from './annotate';
 
 export interface FrameRenderOptions {
@@ -32,6 +33,10 @@ export interface FrameRenderOptions {
   dragNode?: number | null;
   /** Az elkapott pillanýítási cél (mágneses ráugrás) */
   snap?: SnapResult | null;
+  /** Deformált alak kirajzolása (false = séma-mód, VEM nélküli modell) */
+  deformed?: boolean;
+  /** Feszültség-színezés (false = séma-mód, semleges szín) */
+  stressColors?: boolean;
 }
 
 /** Hermite-alakfüggvények (a lokális transzverz lehajlás s-ben) */
@@ -205,7 +210,10 @@ export class FrameRenderer {
 
     const b = this.bounds(model);
     const pad = 40;
-    const DS = opts.deformationScale;
+    // Séma-mód: deformáció és színezés kikapcsolva → a VEM nélküli modell látszik
+    const showDef = opts.deformed ?? true;
+    const showColors = opts.stressColors ?? true;
+    const DS = showDef ? opts.deformationScale : 0;
     const bds = this.deformationExtent(model, sol, DS);
     const minX = Math.min(b.minX, bds.minX);
     const maxX = Math.max(b.maxX, bds.maxX);
@@ -262,12 +270,14 @@ export class FrameRenderer {
           const si = Math.min(smp.length - 1, Math.round((k / segs) * (smp.length - 1)));
           norm = Math.min(1, Math.max(Math.abs(smp[si]!.sigmaTop), Math.abs(smp[si]!.sigmaBot)) / stressMax);
         }
+        if (!showColors) norm = -1; // séma-mód jelzője a rajzoló hurkon belül
         pts.push({ ...toScreen(gx, gy), norm });
       }
 
       for (let k = 0; k < segs; k++) {
         const a = pts[k]!;
         const bb = pts[k + 1]!;
+        const schema = a.norm < 0 || bb.norm < 0; // séma-mód: semleges szín
         const fillT = (a.norm + bb.norm) / 2;
         if (band) {
           // rúd: vastag sáv, merőleges eltolással (±h/2·scale)
@@ -282,7 +292,9 @@ export class FrameRenderer {
           ctx.lineTo(bb.sx - px, bb.sy - py);
           ctx.lineTo(a.sx - px, a.sy - py);
           ctx.closePath();
-          ctx.fillStyle = stressCss(fillT);
+          ctx.fillStyle = schema
+            ? (isDarkTheme() ? 'rgba(129, 152, 192, 0.45)' : 'rgba(120, 145, 190, 0.4)')
+            : stressCss(fillT);
           ctx.fill();
           ctx.strokeStyle = isDarkTheme() ? 'rgba(226,232,240,0.35)' : 'rgba(47,71,118,0.4)';
           ctx.lineWidth = 0.5;
@@ -292,7 +304,9 @@ export class FrameRenderer {
           ctx.beginPath();
           ctx.moveTo(a.sx, a.sy);
           ctx.lineTo(bb.sx, bb.sy);
-          ctx.strokeStyle = stressCss(fillT);
+          ctx.strokeStyle = schema
+            ? (isDarkTheme() ? '#8198c0' : '#5f7cb3')
+            : stressCss(fillT);
           ctx.lineWidth = 3;
           ctx.stroke();
         }
@@ -417,8 +431,8 @@ export class FrameRenderer {
       }
     }
 
-    // Legenda + annotációk (virtuális lemez-objektumokon)
-    this.drawLegend(ctx, sol.maxStress, opts.deformationScale);
+    // Legenda + annotációk (virtuális lemez-objektumokon); séma-módban nincs színlegenda
+    if (showColors) this.drawLegend(ctx, sol.maxStress, opts.deformationScale);
     const v = this.lastView;
     if (v) {
       const worldToScreen = (x: number, y: number) => ({
@@ -433,6 +447,7 @@ export class FrameRenderer {
       drawLoadArrows(ctx, mesh, worldToScreen);
       drawDistributedLoads(ctx, mesh, worldToScreen);
       drawInfoPanel(ctx, mesh, width);
+      drawCoordinateGlyph(ctx, width, height);
     }
   }
 
