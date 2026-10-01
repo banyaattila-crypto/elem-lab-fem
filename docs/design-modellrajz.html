@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ElemLab · design-zárlat 1/1 — modell-rajz</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 16px 48px;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: #eef2f7; color: #1f2c44;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { margin: 0 0 18px; color: #5b6b85; font-size: 13px; }
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center;
+    background: #fff; border: 1px solid #d5dce8; border-radius: 12px;
+    padding: 12px 16px; margin-bottom: 18px; font-size: 13px;
+    box-shadow: 0 1px 4px rgba(31,44,68,.06);
+  }
+  .controls .group { display: flex; gap: 8px; align-items: center; }
+  .controls .group > span.lbl { font-weight: 700; color: #40506b; }
+  button {
+    font: inherit; padding: 5px 12px; border-radius: 8px; cursor: pointer;
+    border: 1px solid #b9c4d6; background: #f4f7fb; color: #24344d;
+  }
+  button.active { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+  label.chk { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+
+  /* ---- rajzláp témák ---- */
+  .sheet {
+    --sheet: #fbfcfe; --frame: #33415a; --ink: #1f2c44; --muted: #5b6b85;
+    --accent: #1d4ed8; --load: #c2410c; --react: #15803d; --dot: #c3cfe2;
+    background: var(--sheet); border: 1px solid #cfd7e4; border-radius: 10px;
+    box-shadow: 0 2px 14px rgba(31,44,68,.10);
+    max-width: 940px; margin: 0 auto; padding: 10px;
+  }
+  .sheet.dark {
+    --sheet: #101a30; --frame: #7f93b5; --ink: #e5eaf3; --muted: #9fb0c9;
+    --accent: #7aa2ff; --load: #fb923c; --react: #4ade80; --dot: #223350;
+    border-color: #23345a;
+  }
+  .sheet.mono {
+    --sheet: #ffffff; --frame: #000; --ink: #000; --muted: #333;
+    --accent: #000; --load: #000; --react: #000; --dot: #c9c9c9;
+  }
+  svg { display: block; width: 100%; height: auto; }
+  .layer-off { display: none; }
+
+  /* ---- jegyzőkönyv ---- */
+  .notes {
+    max-width: 940px; margin: 26px auto 0; background: #fff;
+    border: 1px solid #d5dce8; border-radius: 12px; padding: 18px 22px;
+    font-size: 14px; line-height: 1.55;
+    box-shadow: 0 1px 4px rgba(31,44,68,.06);
+  }
+  .notes h2 { font-size: 15px; margin: 0 0 10px; }
+  .notes ol { margin: 0; padding-left: 22px; }
+  .notes li { margin-bottom: 7px; }
+  .notes code { background: #eef2f9; border-radius: 4px; padding: 1px 5px; font-size: 12.5px; }
+</style>
+</head>
+<body>
+
+<h1>ElemLab — design zárlat, 1. lap: modell-rajz</h1>
+<p class="sub">
+  Referencia-rajz: <strong>kéttámaszú tartó, egyenletes q (lefelé)</strong> — támaszok, reakciók,
+  méretvonal és mini koordinátarendszer. Ez a lap adja a minden modellre alkalmazandó rajz-nyelvet.
+</p>
+
+<div class="controls">
+  <div class="group"><span class="lbl">Téma</span>
+    <button id="btn-light" class="active" type="button">Világos</button>
+    <button id="btn-dark" type="button">Sötét</button>
+  </div>
+  <div class="group"><span class="lbl">Megjelenés</span>
+    <button id="btn-color" class="active" type="button">Színes</button>
+    <button id="btn-mono" type="button">Nyomtatás (mono)</button>
+  </div>
+  <div class="group"><span class="lbl">Rétegek</span>
+    <label class="chk"><input type="checkbox" data-layer="loads" checked> Terhelés</label>
+    <label class="chk"><input type="checkbox" data-layer="supports" checked> Támaszok</label>
+    <label class="chk"><input type="checkbox" data-layer="reactions" checked> Reakciók</label>
+    <label class="chk"><input type="checkbox" data-layer="dims" checked> Méret</label>
+    <label class="chk"><input type="checkbox" data-layer="coords" checked> Koordináta</label>
+    <label class="chk"><input type="checkbox" data-layer="defl"> Deformált (opció)</label>
+  </div>
+</div>
+
+<div class="sheet" id="sheet">
+<svg viewBox="0 0 900 560" role="img" aria-label="Modell-rajz: kéttámaszú tartó elosztott terheléssel">
+  <defs>
+    <!-- pontrács (mérnöki papír) -->
+    <pattern id="dots" width="17" height="17" patternUnits="userSpaceOnUse">
+      <circle cx="8.5" cy="8.5" r="1" fill="var(--dot)"></circle>
+    </pattern>
+    <!-- nyílhegyek -->
+    <marker id="ah-load" markerWidth="10" markerHeight="10" refX="0" refY="0"
+            markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L-4,-9 L4,-9 Z" fill="var(--load)"></path>
+    </marker>
+    <marker id="ah-react" markerWidth="10" markerHeight="10" refX="0" refY="0"
+            markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L-4,-9 L4,-9 Z" fill="var(--react)"></path>
+    </marker>
+    <marker id="ah-dim" markerWidth="10" markerHeight="10" refX="0" refY="0"
+            markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M0,0 L-4,-9 L4,-9 Z" fill="var(--muted)"></path>
+    </marker>
+    <marker id="ah-coord" markerWidth="9" markerHeight="9" refX="0" refY="0"
+            markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L-3.4,-7.5 L3.4,-7.5 Z" fill="var(--muted)"></path>
+    </marker>
+  </defs>
+
+  <!-- rajzkeret -->
+  <rect x="20" y="20" width="860" height="520" fill="none" stroke="var(--frame)" stroke-width="2"></rect>
+  <rect x="36" y="36" width="828" height="488" fill="url(#dots)" stroke="var(--frame)" stroke-width="1"></rect>
+
+  <!-- ============ TERHELÉS (q, lefelé) ============ -->
+  <g data-layer-g="loads" stroke="var(--load)" fill="var(--load)" stroke-width="1.6">
+    <line x1="200" y1="206" x2="700" y2="206"></line>
+    <g>
+      <line x1="200" y1="206" x2="200" y2="250" marker-end="url(#ah-load)"></line>
+      <line x1="250" y1="206" x2="250" y2="250" marker-end="url(#ah-load)"></line>
+      <line x1="300" y1="206" x2="300" y2="250" marker-end="url(#ah-load)"></line>
+      <line x1="350" y1="206" x2="350" y2="250" marker-end="url(#ah-load)"></line>
+      <line x1="400" y1="206" x2="400" y2="250" marker-end="url(#ah-load)"></line>
+      <line x1="450" y1="206" x2="450" y2="250" marker-end="url(#ah-load)"></line>
+      <line x1="500" y1="206" x2="500" y2="250" marker-end="url(#ah-load)"></line>
+      <line x1="550" y1="206" x2="550" y2="250" marker-end="url(#ah-load)"></line>
+      <line x1="600" y1="206" x2="600" y2="250" marker-end="url(#ah-load)"></line>
+      <line x1="650" y1="206" x2="650" y2="250" marker-end="url(#ah-load)"></line>
+      <line x1="700" y1="206" x2="700" y2="250" marker-end="url(#ah-load)"></line>
+    </g>
+    <text x="450" y="192" text-anchor="middle" font-size="14" font-weight="700" stroke="none">q = 10 kN/m</text>
+  </g>
+
+  <!-- ============ Szerkezet: rúd + csomópontok ============ -->
+  <line x1="200" y1="260" x2="700" y2="260" stroke="var(--accent)" stroke-width="7" stroke-linecap="round"></line>
+  <circle cx="200" cy="260" r="4.5" fill="var(--ink)"></circle>
+  <circle cx="700" cy="260" r="4.5" fill="var(--ink)"></circle>
+  <text x="184" y="242" font-size="13" font-weight="700" fill="var(--ink)">A</text>
+  <text x="710" y="242" font-size="13" font-weight="700" fill="var(--ink)">B</text>
+
+  <!-- ============ DEFORMÁLT (opció, ki/be) ============ -->
+  <g data-layer-g="defl" class="layer-off">
+    <path d="M200,260 C350,294 550,294 700,260" fill="none" stroke="var(--ink)"
+          stroke-width="1.6" stroke-dasharray="6 5" opacity="0.8"></path>
+    <text x="450" y="308" text-anchor="middle" font-size="11" fill="var(--muted)">w(x) — deformált (nagyított, szaggatott)</text>
+  </g>
+
+  <!-- ============ TÁMASZOK ============ -->
+  <g data-layer-g="supports" stroke="var(--ink)" fill="none" stroke-width="1.8">
+    <!-- A: csukló (pin) -->
+    <path d="M200,260 L184,288 L216,288 Z"></path>
+    <line x1="176" y1="288" x2="224" y2="288"></line>
+    <g stroke-width="1.2">
+      <line x1="182" y1="288" x2="175" y2="296"></line>
+      <line x1="191" y1="288" x2="184" y2="296"></line>
+      <line x1="200" y1="288" x2="193" y2="296"></line>
+      <line x1="209" y1="288" x2="202" y2="296"></line>
+      <line x1="218" y1="288" x2="211" y2="296"></line>
+    </g>
+    <!-- B: görgő (roller) -->
+    <path d="M700,260 L684,288 L716,288 Z"></path>
+    <circle cx="692" cy="293" r="5"></circle>
+    <circle cx="708" cy="293" r="5"></circle>
+    <line x1="676" y1="298" x2="724" y2="298"></line>
+    <g stroke-width="1.2">
+      <line x1="682" y1="298" x2="675" y2="306"></line>
+      <line x1="691" y1="298" x2="684" y2="306"></line>
+      <line x1="700" y1="298" x2="693" y2="306"></line>
+      <line x1="709" y1="298" x2="702" y2="306"></line>
+      <line x1="718" y1="298" x2="711" y2="306"></line>
+    </g>
+  </g>
+
+  <!-- ============ REAKCIÓK ============ -->
+  <g data-layer-g="reactions" stroke="var(--react)" fill="var(--react)" stroke-width="2">
+    <line x1="200" y1="352" x2="200" y2="312" marker-end="url(#ah-react)"></line>
+    <line x1="700" y1="352" x2="700" y2="312" marker-end="url(#ah-react)"></line>
+    <text x="214" y="336" font-size="12" font-weight="700" stroke="none">R&#8202;A = 20,0 kN</text>
+    <text x="686" y="336" font-size="12" font-weight="700" text-anchor="end" stroke="none">R&#8202;B = 20,0 kN</text>
+  </g>
+
+  <!-- ============ MÉRETVONAL ============ -->
+  <g data-layer-g="dims" stroke="var(--muted)" fill="var(--muted)" stroke-width="1">
+    <line x1="200" y1="308" x2="200" y2="394" stroke-width="0.8" opacity="0.7"></line>
+    <line x1="700" y1="308" x2="700" y2="394" stroke-width="0.8" opacity="0.7"></line>
+    <line x1="200" y1="388" x2="700" y2="388" marker-start="url(#ah-dim)" marker-end="url(#ah-dim)"></line>
+    <text x="450" y="380" text-anchor="middle" font-size="12" stroke="none">L = 4,00 m</text>
+  </g>
+
+  <!-- ============ MINI KOORDINÁTARENDSZER ============ -->
+  <g data-layer-g="coords" stroke="var(--muted)" fill="var(--muted)" stroke-width="1.4">
+    <line x1="86" y1="478" x2="134" y2="478" marker-end="url(#ah-coord)"></line>
+    <line x1="86" y1="478" x2="86" y2="432" marker-end="url(#ah-coord)"></line>
+    <circle cx="86" cy="478" r="3" stroke="none"></circle>
+    <text x="142" y="482" font-size="12" font-style="italic" stroke="none">x</text>
+    <text x="80" y="424" font-size="12" font-style="italic" stroke="none">y</text>
+  </g>
+
+  <!-- ============ CÍMMEZŐ (title block) ============ -->
+  <g font-family="inherit">
+    <rect x="560" y="462" width="304" height="62" fill="var(--sheet)" stroke="var(--frame)" stroke-width="1.2"></rect>
+    <line x1="560" y1="483" x2="864" y2="483" stroke="var(--frame)" stroke-width="1"></line>
+    <line x1="560" y1="503" x2="864" y2="503" stroke="var(--frame)" stroke-width="1"></line>
+    <text x="568" y="478" font-size="12" font-weight="700" fill="var(--ink)">ElemLab · modell-rajz — M01</text>
+    <text x="568" y="498" font-size="11" fill="var(--ink)">Kéttámaszú tartó · egyenletes q (lefelé)</text>
+    <text x="568" y="518" font-size="10" fill="var(--muted)">L = 4,0 m · q = 10 kN/m · IPE 300 · S235 · M 1:50</text>
+    <text x="44" y="516" font-size="10" fill="var(--muted)">design-zárlat 1/1 · terv · 2026-10-01</text>
+  </g>
+</svg>
+</div>
+
+<div class="notes">
+  <h2>Döntési jegyzőkönyv (design-zárlat, 1. lap)</h2>
+  <ol>
+    <li><strong>A modell-rajz a sémát mutatja, nem a hálót:</strong> a rúd vastag vonal, a csomópont pont, a terhelés/támasz/reakció mérnöki jelek. A háló + hőtérkép továbbra is az analízis-nézet marad; a modell-rajz fejléc-/sarok-rajzként jelenik meg minden modellnél.</li>
+    <li><strong>Mini koordinátarendszer:</strong> x jobbra, y felfelé (a világgal azonos irány), a vászon bal alsó sarkában; vékony, témafüggő szürke, nem lóg a rajzba. Implementáció: új <code>drawCoordinateGlyph()</code> az <code>annotate.ts</code>-ben.</li>
+    <li><strong>q mindig lefelé mutat a rúdra:</strong> fedővonal + nyilak a rúdra mutatnak, q-címke középen. Nyílszám a hossztól függően (4–12), mint a mostani <code>drawDistributedLoads</code>-ban — a meglévő irány-logika megfelelő, ez a lap rögzíti a végleges arányokat.</li>
+    <li><strong>Támasz-jelek:</strong> csukló = háromszög + sraffozás, görgő = háromszög + két görgőkör + alapvonal (a meglévő <code>drawSupports</code> jelei, A/B betűjelöléssel bővítve).</li>
+    <li><strong>Rétegek külön kapcsolókkal:</strong> terhelés, támaszok, reakciók, méretvonal, koordináta, (opció: deformált szaggatott görbe). A reakció csak megoldás után rajzolódik.</li>
+    <li><strong>Három megjelenés:</strong> világos, sötét (témafüggő változókkal) és <em>mono</em> — a nyomtatás/PDF/jelentés fekete-fehér változata.</li>
+    <li><strong>Címmező (title block):</strong> modell-azonosító, statika, paraméterek + szelvény/anyag, méretarány, dátum, verzió — minden modell-rajz alján.</li>
+  </ol>
+</div>
+
+<script>
+  const sheet = document.getElementById('sheet');
+  const btn = (id) => document.getElementById(id);
+  function setTheme(dark) {
+    sheet.classList.toggle('dark', dark);
+    btn('btn-light').classList.toggle('active', !dark);
+    btn('btn-dark').classList.toggle('active', dark);
+  }
+  function setMono(mono) {
+    sheet.classList.toggle('mono', mono);
+    btn('btn-color').classList.toggle('active', !mono);
+    btn('btn-mono').classList.toggle('active', mono);
+  }
+  btn('btn-light').onclick = () => setTheme(false);
+  btn('btn-dark').onclick = () => setTheme(true);
+  btn('btn-color').onclick = () => setMono(false);
+  btn('btn-mono').onclick = () => setMono(true);
+
+  document.querySelectorAll('input[data-layer]').forEach((chk) => {
+    chk.addEventListener('change', () => {
+      document.querySelectorAll(`[data-layer-g="${chk.dataset.layer}"]`)
+        .forEach((g) => g.classList.toggle('layer-off', !chk.checked));
+    });
+  });
+</script>
+</body>
+</html>
