@@ -10,14 +10,14 @@
   --text: #17233c;
   --text-dim: #5a6b88;
   --accent: #2f6be6;
-  --accent-2: #8b5cf6;
-  --accent-3: #c026d3;
+  --accent-2: #2f6be6;
+  --accent-3: #1e5fd0;
   --accent-soft: #e5edfd;
   --border: #d4e0f5;
 
-  --grad-btn: linear-gradient(135deg, #1d6df0 0%, #6d4bd8 55%, #c026d3 100%);
-  --grad-brand: linear-gradient(135deg, #2f6be6, #a855f7);
-  --grad-text: linear-gradient(115deg, #1d4ed8 0%, #9333ea 60%, #e11d48 100%);
+  --grad-btn: #2456b8;
+  --grad-brand: #2f6be6;
+  --grad-text: #1c3d75;
 
   --font-display: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
 
@@ -51,14 +51,14 @@
   --text: #e2e8f0;
   --text-dim: #94a3b8;
   --accent: #60a5fa;
-  --accent-2: #818cf8;
-  --accent-3: #c084fc;
+  --accent-2: #60a5fa;
+  --accent-3: #3b82f6;
   --accent-soft: rgba(59, 130, 246, 0.16);
   --border: #24324d;
 
-  --grad-btn: linear-gradient(135deg, #3b82f6 0%, #6366f1 60%, #a855f7 100%);
-  --grad-brand: linear-gradient(135deg, #3b82f6, #a855f7);
-  --grad-text: linear-gradient(115deg, #93c5fd 0%, #c084fc 100%);
+  --grad-btn: #3b82f6;
+  --grad-brand: #60a5fa;
+  --grad-text: #cfe0fa;
 
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 14px 34px rgba(0, 0, 0, 0.42);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
@@ -75,25 +75,8 @@
 
 :root[data-theme='dark'] body {
   background:
-    radial-gradient(1100px 520px at 10% -12%, rgba(37, 99, 235, 0.16), transparent 60%),
-    radial-gradient(950px 480px at 104% -4%, rgba(168, 85, 247, 0.14), transparent 55%),
+    radial-gradient(1100px 520px at 10% -12%, rgba(37, 99, 235, 0.13), transparent 60%),
     linear-gradient(180deg, #0e1729 0%, #0a1120 100%);
-}
-
-:root[data-theme='dark'] .aurora .ab {
-  opacity: 0.55;
-}
-
-:root[data-theme='dark'] .aurora .ab-1 {
-  background: #1d4ed8;
-}
-
-:root[data-theme='dark'] .aurora .ab-2 {
-  background: #7c3aed;
-}
-
-:root[data-theme='dark'] .aurora .ab-3 {
-  background: #0e7490;
 }
 
 * {
@@ -112,10 +95,8 @@ body {
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
   background:
-    radial-gradient(1000px 540px at 8% -12%, rgba(37, 99, 235, 0.17), transparent 62%),
-    radial-gradient(900px 520px at 102% -6%, rgba(168, 85, 247, 0.16), transparent 58%),
-    radial-gradient(900px 560px at 50% 118%, rgba(14, 165, 233, 0.14), transparent 60%),
-    linear-gradient(160deg, #e4edfc 0%, #eef2ff 45%, #f3ecfe 100%);
+    radial-gradient(1000px 540px at 8% -12%, rgba(37, 99, 235, 0.10), transparent 62%),
+    linear-gradient(160deg, #e2eaf8 0%, #eaeffa 55%, #e8f0fa 100%);
   background-attachment: fixed;
   transition: background-color 0.35s var(--ease), color 0.35s var(--ease);
 }
@@ -138,12 +119,9 @@ input[type='range'] {
 
 /* ————— Auróra (mozgó, lágy színfoltok a háttérben) ————— */
 
+/* Mérnöki munkaasztal: nincs mozgó auróra, csak a csendes alap */
 .aurora {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  pointer-events: none;
+  display: none;
 }
 
 .aurora .ab {
@@ -229,8 +207,8 @@ input[type='range'] {
   display: block;
   position: relative;
   border-radius: 15px;
-  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.38);
-  transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease);
+  box-shadow: 0 3px 10px rgba(23, 48, 96, 0.24);
+  transition: transform 0.3s var(--ease);
 }
 
 .brand-mark svg {
@@ -249,8 +227,7 @@ input[type='range'] {
 }
 
 .brand:hover .brand-mark {
-  transform: translateY(-1px) rotate(-2deg);
-  box-shadow: 0 12px 28px rgba(124, 58, 237, 0.5);
+  transform: translateY(-1px);
 }
 
 /* Lágy pulzáló gyűrű a központi csomópont körül */
@@ -282,16 +259,13 @@ input[type='range'] {
 
 .brand-text h1 {
   margin: 0;
-  font-family: var(--font-display);
-  font-style: italic;
-  font-weight: 650;
-  font-size: 1.55rem;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-style: normal;
+  font-weight: 800;
+  font-size: 1.4rem;
   line-height: 1.05;
-  letter-spacing: 0.005em;
-  background: var(--grad-text);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  letter-spacing: -0.01em;
+  color: var(--text);
 }
 
 .subtitle {
@@ -592,11 +566,9 @@ input[type='range']::-moz-range-track {
   background: transparent;
 }
 
-/* Gombok: élő gradiens + világos árnyék */
+/* Gombok: sima, mély kék — mérnöki visszafogottság */
 button {
   background: var(--grad-btn);
-  background-size: 160% 160%;
-  background-position: 0% 50%;
   color: #ffffff;
   font-weight: 700;
   border: none;
@@ -604,15 +576,14 @@ button {
   padding: 0.6rem 0.85rem;
   cursor: pointer;
   font-size: 0.9rem;
-  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.28);
-  transition: transform 0.18s var(--ease), box-shadow 0.25s var(--ease),
-    background-position 0.5s var(--ease);
+  box-shadow: 0 2px 8px rgba(23, 48, 96, 0.22);
+  transition: transform 0.18s var(--ease), box-shadow 0.25s var(--ease);
 }
 
 button:hover {
-  background-position: 100% 50%;
+  background: var(--grad-brand);
   transform: translateY(-1px);
-  box-shadow: 0 10px 26px rgba(79, 70, 229, 0.36);
+  box-shadow: 0 4px 14px rgba(23, 48, 96, 0.28);
 }
 
 button:active {
@@ -640,12 +611,10 @@ button:focus-visible {
 
 .lang-switch button:hover,
 .mp-nav button:hover {
-  background: var(--grad-brand);
-  background-size: 160% 160%;
-  background-position: 100% 50%;
-  color: #ffffff;
-  border-color: transparent;
-  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.3);
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: none;
 }
 
 /* Geometria-visszaállító: másodlagos jellegű, és tiltva is mutatja a
@@ -660,12 +629,10 @@ button:focus-visible {
 }
 
 #reset-geometry-btn:hover:not(:disabled) {
-  background: var(--grad-brand);
-  background-size: 160% 160%;
-  background-position: 100% 50%;
-  color: #ffffff;
-  border-color: transparent;
-  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.3);
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: none;
 }
 
 #reset-geometry-btn:disabled {
@@ -885,16 +852,16 @@ canvas {
 }
 
 .anim-btn:hover {
-  color: #ffffff;
-  background: var(--grad-btn);
-  border-color: transparent;
-  transform: translateY(-2px);
-  box-shadow: 0 10px 22px rgba(79, 70, 229, 0.32);
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .anim-btn[aria-pressed='true'] {
   color: #ffffff;
-  background: var(--grad-btn);
+  background: var(--accent);
   border-color: transparent;
 }
 
@@ -936,12 +903,12 @@ canvas {
 }
 
 .engine-switch button.active {
-  background: var(--grad-brand);
+  background: var(--accent);
   color: #ffffff;
 }
 
 .engine-switch button.active:hover {
-  filter: brightness(1.06);
+  background: var(--accent);
 }
 
 /* ————— Részletek kártyák ————— */
