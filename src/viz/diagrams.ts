@@ -339,19 +339,25 @@ export class MVPanel {
     ctx.lineTo(r, mid);
     ctx.stroke();
 
-    // kitöltött terület a görbe alatt
-    ctx.beginPath();
-    this.samples.forEach((s, i) => {
-      const px = this.worldToScreenX(s.x);
-      const py = mid - (s[key] / maxVal) * (subH * 0.42);
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    });
-    ctx.lineTo(r, mid);
-    ctx.lineTo(l, mid);
-    ctx.closePath();
+    // Kitöltés szegmensenként: a tengelyt átlépő minták között az egyszerű
+    // zárt sokszög csomót köt ("csokornyakkendő") — szegmensenként nincs csomó.
     ctx.fillStyle = pal.fill;
-    ctx.fill();
+    for (let i = 1; i < this.samples.length; i++) {
+      const a = this.samples[i - 1]!;
+      const b = this.samples[i]!;
+      const ax = this.worldToScreenX(a.x);
+      const bx = this.worldToScreenX(b.x);
+      const ay = mid - (a[key] / maxVal) * (subH * 0.42);
+      const by = mid - (b[key] / maxVal) * (subH * 0.42);
+      if (a[key] === 0 && b[key] === 0) continue;
+      ctx.beginPath();
+      ctx.moveTo(ax, mid);
+      ctx.lineTo(ax, ay);
+      ctx.lineTo(bx, by);
+      ctx.lineTo(bx, mid);
+      ctx.closePath();
+      ctx.fill();
+    }
 
     // görbe
     ctx.strokeStyle = pal.line;

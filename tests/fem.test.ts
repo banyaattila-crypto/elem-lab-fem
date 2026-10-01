@@ -90,12 +90,23 @@ describe('Teljes szolver — analitikus validáció', () => {
     const sol = solve(mesh);
 
     const KtFem = sol.maxVonMises / sigma0;
-    // Ismert korlát: a lépcsős lyukhatár újrameneti sarkai mesterséges
-    // feszültségcsúcsot adnak (szinguláris pont), ezért a mért Kt a sima
-    // körlyukas Kt≈3 FELETT van. A síkban kerekített háló (későbbi mérföldkő)
-    // közelíti a 3σ₀-t. Most: plauzibilitási sáv.
-    expect(KtFem).toBeGreaterThan(2);
-    expect(KtFem).toBeLessThan(4.5);
+    // v0.16.0: körre követő (lépcsőmentes) háromszögelés. A d/W = 0,4
+    // véges szélességnél az elméleti (net-section) Kt ≈ 3,3–3,6; a mért
+    // elem-csúcsérték ettől kicsit magasabb, DE stabil és a sűrűséggel
+    // konvergál (a régi lépcsős háló 4,1–5,0 között szórt).
+    expect(KtFem).toBeGreaterThan(3);
+    expect(KtFem).toBeLessThan(3.7);
+  });
+
+  it('lyukas lemez: Kt a sűrűséggel konvergál (nincs szórás)', () => {
+    const sigma0 = 1e6;
+    const kts: number[] = [];
+    for (const density of [2, 6]) {
+      const sol = solve(buildPlateWithHole({ sigma0, density }));
+      kts.push(sol.maxVonMises / sigma0);
+    }
+    // a lépcsős hálónál ez a különbség ~0,6 volt; most < 0,05
+    expect(Math.abs(kts[0]! - kts[1]!)).toBeLessThan(0.05);
   });
 
   it('lyukas lemez: Kt analitikus határeset 3', () => {

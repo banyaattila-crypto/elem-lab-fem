@@ -86,9 +86,9 @@ export class ControlsPanel {
       ),
     );
 
-    // 3) Hálósűrűség csúszka
+    // 3) Hálósűrűség csúszka (1–10: a lemez-modellek háromszögelése is ezt követi)
     this.root.appendChild(
-      this.slider('density', t('controls.density'), 1, 5, 1, 3, (v) => `${v}`, (v) =>
+      this.slider('density', t('controls.density'), 1, 10, 1, 3, (v) => `${v}`, (v) =>
         this.cb.onParamChange('density', v),
       ),
     );

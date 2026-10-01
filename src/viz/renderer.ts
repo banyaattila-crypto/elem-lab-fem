@@ -223,7 +223,7 @@ export class Renderer {
           : 'rgba(120, 145, 190, 0.30)';
       ctx.fill();
 
-if (opts.showMeshEdges) {
+if (opts.showMeshEdges && showColors) {
         ctx.strokeStyle = isDarkTheme() ? 'rgba(203, 213, 225, 0.16)' : 'rgba(47, 71, 118, 0.5)';
         ctx.lineWidth = 0.5;
         ctx.stroke();
@@ -239,6 +239,35 @@ if (opts.showMeshEdges) {
           }
         }
       }
+    }
+
+    // Séma-mód: a modell EGYSZERŰ RAJA — elemhatárok helyett a külső körvonal
+    // (és a lyukhatár): az a él, amelyik pontosan egy háromszöghöz tartozik.
+    if (!showColors) {
+      const edgeCount = new Map<string, number>();
+      const edgeKey = (a: number, b: number) => (a < b ? `${a},${b}` : `${b},${a}`);
+      for (const elem of mesh.elements) {
+        const ns = elem.nodes;
+        for (let m = 0; m < 3; m++) {
+          const k = edgeKey(ns[m]!, ns[(m + 1) % 3]!);
+          edgeCount.set(k, (edgeCount.get(k) ?? 0) + 1);
+        }
+      }
+      ctx.strokeStyle = isDarkTheme() ? '#a9bcd9' : '#31507f';
+      ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      for (const [k, c] of edgeCount) {
+        if (c !== 1) continue;
+        const [ia, ib] = k.split(',');
+        const pa = mesh.nodes[Number(ia)]!;
+        const pb = mesh.nodes[Number(ib)]!;
+        const sa = tx(pa.x, pa.y, pa.id);
+        const sb = tx(pb.x, pb.y, pb.id);
+        ctx.moveTo(sa.sx, sa.sy);
+        ctx.lineTo(sb.sx, sb.sy);
+      }
+      ctx.stroke();
     }
 
     // Kiválasztott elem kiemelése

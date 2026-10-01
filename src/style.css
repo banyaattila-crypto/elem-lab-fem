@@ -1028,38 +1028,10 @@ canvas {
   position: relative;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  background: linear-gradient(170deg, var(--rcbg, rgba(255, 255, 255, 0.6)) 0%, rgba(255, 255, 255, 0.72) 100%);
-  border: 1px solid color-mix(in srgb, var(--rc, var(--accent)) 30%, transparent);
+  background: transparent;
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 0.85rem 0.95rem 0.7rem;
-}
-
-.result-item::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--rc, var(--accent)), transparent 85%);
-}
-
-.result-item:nth-child(1) {
-  --rc: #0ea5e9;
-  --rcbg: rgba(14, 165, 233, 0.12);
-}
-.result-item:nth-child(2) {
-  --rc: #7c3aed;
-  --rcbg: rgba(124, 58, 237, 0.12);
-}
-.result-item:nth-child(3) {
-  --rc: #f59e0b;
-  --rcbg: rgba(245, 158, 11, 0.13);
-}
-.result-item:nth-child(4) {
-  --rc: #10b981;
-  --rcbg: rgba(16, 185, 129, 0.12);
 }
 
 .result-item span {
@@ -1074,10 +1046,7 @@ canvas {
   font-size: 1.18rem;
   font-variant-numeric: tabular-nums;
   margin-top: 0.2rem;
-  background: linear-gradient(120deg, var(--rc, var(--accent)), var(--text) 55%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--text);
 }
 
 /* ————— Matematikai panel ————— */

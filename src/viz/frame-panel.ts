@@ -268,18 +268,26 @@ export class FrameMVPanel {
     ctx.lineTo(r, mid);
     ctx.stroke();
 
-    ctx.beginPath();
-    this.samples.forEach((s, i) => {
-      const px = this.worldToScreenX(s.arc);
-      const py = mid - (s[key] / maxVal) * (subH * 0.42);
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    });
-    ctx.lineTo(r, mid);
-    ctx.lineTo(l, mid);
-    ctx.closePath();
+    // Kitöltés szegmensenként: a tengelyt átlépő minták között az egyszerű
+    // zárt sokszög csomót köt ("csokornyakkendő") — ez volt a "horror".
+    // Egy-egy szegmens pontosan akkor átlép, ha a két minta előjele különbözik.
     ctx.fillStyle = pal.fill;
-    ctx.fill();
+    for (let i = 1; i < this.samples.length; i++) {
+      const a = this.samples[i - 1]!;
+      const b = this.samples[i]!;
+      const ax = this.worldToScreenX(a.arc);
+      const bx = this.worldToScreenX(b.arc);
+      const ay = mid - (a[key] / maxVal) * (subH * 0.42);
+      const by = mid - (b[key] / maxVal) * (subH * 0.42);
+      if (a[key] === 0 && b[key] === 0) continue; // nulla szegmens: nincs mit tölteni
+      ctx.beginPath();
+      ctx.moveTo(ax, mid);
+      ctx.lineTo(ax, ay);
+      ctx.lineTo(bx, by);
+      ctx.lineTo(bx, mid);
+      ctx.closePath();
+      ctx.fill();
+    }
 
     ctx.strokeStyle = pal.line[dark ? 0 : 1]!;
     ctx.lineWidth = 1.8;

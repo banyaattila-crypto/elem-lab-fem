@@ -78,7 +78,7 @@ type ParamKey = 'load' | 'density' | 'material' | 'defscale';
 const state = {
   modelId: 'cantilever',
   load: 1000,
-  density: 3,
+  density: 6,
   material: 'steel' as MaterialKey,
   frameMaterial: 's235' as FrameMaterialKey,
   defscale: 500,
@@ -90,8 +90,8 @@ const state = {
   elementType: 'CST' as 'CST' | 'T6',
   /** Terhelés-típus: pontterhelés vagy elosztott (csak gerenda-modellek nél) */
   loadType: 'point' as 'point' | 'distributed',
-  /** Séma-mód: VEM nélküli modell — deformáció és feszültség-színezés nélkül */
-  schemaMode: false,
+  /** Séma-mód: VEM nélküli modell — deformáció és feszültség-színezés nélkül (alap: be) */
+  schemaMode: true,
   /**
    * A felhasználó által húzott csomópont-pozíciók (mágneses végpont).
    * Külön tárolva, mert a modell minden újrabeállításkor újragenerálódik —
@@ -1087,6 +1087,7 @@ import { getLang } from './ui/i18n';
 // ————— Motor- és elem-típus váltók —————
 
 document.querySelector<HTMLButtonElement>('#engine-canvas')!.addEventListener('click', () => {
+  exitSchemaMode(); // 2D = eredmény-nézet
   state.engine = 'canvas';
   setEngineButtons();
   redraw();
@@ -1101,6 +1102,7 @@ document.querySelector<HTMLButtonElement>('#engine-webgl')!.addEventListener('cl
     );
     return;
   }
+  exitSchemaMode(); // 3D = eredmény-nézet
   state.engine = 'webgl';
   setEngineButtons();
   redraw();
@@ -1120,15 +1122,28 @@ function setEngineButtons(): void {
 
 // ————— Séma-mód: VEM nélküli modell (deformáció és színezés nélkül) —————
 
-document.querySelector<HTMLButtonElement>('#mode-schema')!.addEventListener('click', () => {
-  state.schemaMode = !state.schemaMode;
+/** Séma-mód UI-állapota: legenda rejtve, gomb aktív */
+function applySchemaModeUi(): void {
   const legend = document.querySelector<HTMLDivElement>('#legend');
   if (legend) legend.style.display = state.schemaMode ? 'none' : '';
   setEngineButtons();
+}
+
+/** Kilépés a sémából (2D/3D/CST gomb = eredmény-nézet kérése) */
+function exitSchemaMode(): void {
+  if (!state.schemaMode) return;
+  state.schemaMode = false;
+  applySchemaModeUi();
+}
+
+document.querySelector<HTMLButtonElement>('#mode-schema')!.addEventListener('click', () => {
+  state.schemaMode = !state.schemaMode;
+  applySchemaModeUi();
   redraw();
 });
 
 document.querySelector<HTMLButtonElement>('#elem-t6')!.addEventListener('click', () => {
+  exitSchemaMode(); // elem-típus váltás = eredmény-nézet
   state.elementType = state.elementType === 'CST' ? 'T6' : 'CST';
   setEngineButtons();
   rebuildAndSolve(true);
@@ -1235,6 +1250,7 @@ try {
   initTheme();
   initTabs();
   placeTabIndicator();
+  applySchemaModeUi(); // séma az alapértelmezett nézet → legenda rejtve
   document.querySelector<HTMLButtonElement>('#mv-toggle')!.addEventListener('click', toggleMVPanel);
   renderControls();
   updateFrameUiState();
